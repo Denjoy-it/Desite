@@ -1,0 +1,26 @@
+---
+interface Props {
+  href: string;
+  index?: string;
+  title: string;
+  description?: string;
+  badgeText?: string;
+  badgeVariant?: "ok" | "part" | "gap" | "info" | "tbd";
+}
+const { href, index, title, description, badgeText, badgeVariant = "info" } = Astro.props;
+---
+
+<a class="layer" href={href}>
+  {index && <span class="idx">{index}</span>}
+  <div>
+    <div class="lt">{title}</div>
+    {description && <div class="ld">{description}</div>}
+  </div>
+  {
+    badgeText && (
+      <span class="st">
+        <span class={`badge b-${badgeVariant}`}>{badgeText}</span>
+      </span>
+    )
+  }
+</a>

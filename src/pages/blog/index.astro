@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticleListRow from "../../components/ArticleListRow.astro";
+import { formatDate } from "../../lib/format";
+
+const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+---
+
+<BaseLayout title="Blog - Desite" description="Chronologische aantekeningen en updates." noIndex>
+  <div class="wrap">
+    <header class="page-header reveal">
+      <div class="kicker"><span class="dot"></span> Blog</div>
+      <h1>Blog</h1>
+      <p class="lede">Chronologische aantekeningen en updates.</p>
+    </header>
+    <section class="reveal">
+      <div class="stack">
+        {
+          posts.map((post) => (
+            <ArticleListRow
+              href={`/blog/${post.id}/`}
+              index={formatDate(post.data.date)}
+              title={post.data.title}
+              description={post.data.description}
+              badgeText={post.data.category}
+            />
+          ))
+        }
+      </div>
+      {posts.length === 0 && <p>Nog geen posts.</p>}
+    </section>
+  </div>
+</BaseLayout>

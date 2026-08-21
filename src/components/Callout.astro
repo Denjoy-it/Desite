@@ -1,0 +1,18 @@
+---
+interface Props {
+  kind?: "warn" | "info" | "caution" | "ok";
+  title?: string;
+}
+const { kind = "info", title } = Astro.props;
+---
+
+<div class={`call ${kind}`}>
+  {
+    title && (
+      <div class="ct">
+        <span>&#9670;</span> {title}
+      </div>
+    )
+  }
+  <slot />
+</div>

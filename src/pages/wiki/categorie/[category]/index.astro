@@ -1,0 +1,41 @@
+---
+import { getCollection } from "astro:content";
+import WikiLayout from "../../../../layouts/WikiLayout.astro";
+import ArticleListRow from "../../../../components/ArticleListRow.astro";
+import { CATEGORIES } from "../../../../content.config";
+import { slugifyCategory } from "../../../../lib/slug";
+
+export async function getStaticPaths() {
+  return CATEGORIES.map((category) => ({
+    params: { category: slugifyCategory(category) },
+    props: { category },
+  }));
+}
+
+const { category } = Astro.props;
+const pages = (await getCollection("wiki", ({ data }) => data.category === category)).sort(
+  (a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title),
+);
+---
+
+<WikiLayout
+  title={`${category} - Wiki`}
+  description={`Wiki-pagina's in de categorie ${category}.`}
+>
+  <div class="wiki-crumb">
+    <a href="/wiki/">Wiki</a> <span>/</span> <span>{category}</span>
+  </div>
+  <h1 class="wiki-title">{category}</h1>
+  <div class="stack">
+    {
+      pages.map((entry) => (
+        <ArticleListRow
+          href={`/wiki/${entry.id}/`}
+          title={entry.data.title}
+          description={entry.data.description}
+        />
+      ))
+    }
+  </div>
+  {pages.length === 0 && <p>Nog geen pagina's in deze categorie.</p>}
+</WikiLayout>

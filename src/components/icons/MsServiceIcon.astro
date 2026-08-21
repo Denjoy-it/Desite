@@ -1,0 +1,49 @@
+---
+// Eigen, simpele lijn-iconen per dienst - GEEN officiele Microsoft-logo's
+// (die zijn beschermde merken). Representatief, in de huisstijl-lijnstijl.
+interface Props {
+  name: string;
+}
+const { name } = Astro.props;
+
+const ICONS: Record<string, string> = {
+  Algemeen: '<path d="M5 3h10v14l-5-3-5 3V3z"/>',
+  Azure: '<path d="M6 15a4 4 0 0 1 .3-7.97A5 5 0 0 1 16 8.5 3.5 3.5 0 0 1 15.5 15H6z"/>',
+  "Microsoft 365":
+    '<rect x="3" y="3" width="6" height="6" rx=".5"/><rect x="11" y="3" width="6" height="6" rx=".5"/><rect x="3" y="11" width="6" height="6" rx=".5"/><rect x="11" y="11" width="6" height="6" rx=".5"/>',
+  "Entra ID":
+    '<path d="M10 2 4 4.5V9c0 4 2.5 6.9 6 8 3.5-1.1 6-4 6-8V4.5L10 2z"/><path d="M7.3 10l2 2 3.2-3.6"/>',
+  "Exchange Online":
+    '<rect x="3" y="5" width="14" height="10" rx="1"/><path d="M3 6l7 5 7-5"/>',
+  SharePoint:
+    '<circle cx="5" cy="10" r="2"/><circle cx="15" cy="5" r="2"/><circle cx="15" cy="15" r="2"/><path d="M6.7 9l6.6-3M6.7 11l6.6 3"/>',
+  Teams:
+    '<circle cx="7" cy="7" r="2.5"/><circle cx="14.5" cy="8" r="2"/><path d="M2.3 16c0-2.6 2-4.3 4.7-4.3s4.7 1.7 4.7 4.3"/><path d="M12.2 15.7c.2-1.9 1.6-3.2 3.5-3.2 1.7 0 3 1 3.3 2.6"/>',
+  Office: '<path d="M6 2h6l3 3v13H6V2z"/><path d="M9 9h4M9 12h4M9 15h2"/>',
+  Defender: '<path d="M10 2 4 4.5V9c0 4 2.5 6.9 6 8 3.5-1.1 6-4 6-8V4.5L10 2z"/>',
+  Intune: '<rect x="6" y="2" width="8" height="16" rx="1.5"/><path d="M9 15.5h2"/>',
+  "Compliance & Purview":
+    '<rect x="5" y="3" width="10" height="14" rx="1.5"/><path d="M8 3V2h4v1"/><path d="M7.4 10l1.8 1.8L12.6 8"/>',
+  PowerShell:
+    '<rect x="2.5" y="4" width="15" height="12" rx="1.5"/><path d="M6 8l3 2.5L6 13"/><path d="M10.5 13h3.5"/>',
+  "Windows Server & Client":
+    '<rect x="3" y="3" width="14" height="5" rx="1"/><rect x="3" y="11" width="14" height="5" rx="1"/><path d="M6 5.5h.01M6 13.5h.01"/>',
+  Netwerken:
+    '<circle cx="10" cy="4" r="2"/><circle cx="4" cy="15" r="2"/><circle cx="16" cy="15" r="2"/><path d="M10 6v4M8.5 10.5 5.5 13M11.5 10.5l3 2.5"/>',
+};
+
+const inner = ICONS[name] ?? ICONS.Algemeen;
+---
+
+<svg
+  viewBox="0 0 20 20"
+  width="18"
+  height="18"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.6"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  set:html={inner}
+/>

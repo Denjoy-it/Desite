@@ -1,0 +1,75 @@
+<script>
+  import mermaid from "mermaid";
+
+  const codeNodes = document.querySelectorAll<HTMLElement>("pre > code.language-mermaid");
+  if (codeNodes.length) {
+    const targets: HTMLElement[] = [];
+    codeNodes.forEach((code) => {
+      const pre = code.parentElement;
+      if (!pre) return;
+      const wrap = document.createElement("div");
+      wrap.className = "mermaid-wrap";
+      const target = document.createElement("pre");
+      target.className = "mermaid";
+      target.textContent = code.textContent;
+      wrap.appendChild(target);
+      pre.replaceWith(wrap);
+      targets.push(target);
+    });
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "base",
+      themeVariables: {
+        fontFamily: "IBM Plex Sans, sans-serif",
+        fontSize: "14.5px",
+        // Standaard node: wit met navy rand - zoals de handgetekende
+        // QUBE-diagrammen. Oranje/rood/groen komen uit de classDef-states
+        // (zie README: qHighlight/qBlocked/qSuccess/qInfo), niet uit hier.
+        primaryColor: "#ffffff",
+        primaryBorderColor: "#03295a",
+        primaryTextColor: "#161a20",
+        lineColor: "#8b929e",
+        textColor: "#161a20",
+        mainBkg: "#ffffff",
+        nodeBorder: "#03295a",
+        secondaryColor: "#eef3fc",
+        secondaryBorderColor: "#03295a",
+        secondaryTextColor: "#161a20",
+        tertiaryColor: "#f4f5f7",
+        tertiaryBorderColor: "#d3d8df",
+        clusterBkg: "#f4f5f7",
+        clusterBorder: "#d3d8df",
+        edgeLabelBackground: "#f4f5f7",
+        arrowheadColor: "#8b929e",
+      },
+      flowchart: {
+        curve: "basis",
+        padding: 20,
+        nodeSpacing: 50,
+        rankSpacing: 60,
+        htmlLabels: true,
+      },
+      themeCSS: `
+        .node rect, .node polygon, .node circle {
+          rx: 8px; ry: 8px;
+          stroke-width: 1.6px;
+          filter: drop-shadow(0 4px 10px rgba(20,24,30,.12));
+        }
+        .node .label {
+          font-weight: 500;
+        }
+        .edgePath .path { stroke-width: 1.8px; }
+        .edgeLabel {
+          font-family: "IBM Plex Mono", monospace;
+          font-size: 11px;
+          border-radius: 3px;
+        }
+        .cluster rect { rx: 8px; ry: 8px; }
+        .marker { stroke-width: 1.4px; }
+        .flowchart-link { stroke-linecap: round; }
+      `,
+    });
+    mermaid.run({ nodes: targets });
+  }
+</script>

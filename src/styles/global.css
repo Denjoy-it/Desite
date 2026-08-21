@@ -1,0 +1,1350 @@
+/* ==========================================================================
+   DESITE - COMPONENTEN
+   Component-classes overgenomen uit de QUBE-huisstijl, zonder de
+   document-specifieke JS-gimmicks (taal-toggle, achtergrond-switcher,
+   scrollspy-zijmenu per document) - Desite heeft een normale sitebrede
+   navigatie in plaats daarvan (zie site-header hieronder).
+   ========================================================================== */
+
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Site-header (nieuw, sitebreed - vervangt de per-document gimmicks) - */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  background: rgba(244, 245, 247, 0.92);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--border);
+}
+.site-header .bar {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.site-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: none;
+  white-space: nowrap;
+}
+.site-title .dot {
+  color: var(--brand);
+}
+.site-nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.site-nav a {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: none;
+  padding: 7px 12px;
+  transition: color 0.12s, background 0.12s;
+}
+.site-nav a:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+.site-nav a.active {
+  color: var(--brand-dim);
+  background: rgba(238, 114, 20, 0.09);
+  font-weight: 600;
+}
+
+/* --- Wiki-dropdown in de header (Microsoft-diensten) ----------------------- */
+.nav-dropdown {
+  position: relative;
+}
+.nav-dropdown-trigger {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.12s, background 0.12s;
+}
+.nav-dropdown-trigger:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+.nav-dropdown-trigger.active {
+  color: var(--brand-dim);
+  background: rgba(238, 114, 20, 0.09);
+  font-weight: 600;
+}
+.nav-dropdown-trigger svg {
+  transition: transform 0.15s;
+}
+.nav-dropdown-trigger[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.nav-dropdown-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 540px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(20, 24, 30, 0.16);
+  padding: 16px;
+  z-index: 600;
+}
+.nav-dropdown-panel.open {
+  display: block;
+}
+.nav-dropdown-all {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-dim);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.nav-dropdown-all:hover {
+  color: var(--brand);
+}
+.nav-dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+}
+.nav-dropdown-grid a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: none;
+  font-size: 0.86rem;
+  transition: background 0.12s, color 0.12s;
+}
+.nav-dropdown-grid a:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.nav-dropdown-grid a svg {
+  color: var(--brand-dim);
+  flex: none;
+}
+.home-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.home-grid a {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 16px;
+  font-size: 0.94rem;
+  font-weight: 500;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.home-grid a:hover {
+  border-color: var(--brand);
+  background: var(--surface);
+  transform: translateX(3px);
+  box-shadow: 0 4px 18px rgba(238, 114, 20, 0.08);
+}
+.home-grid a svg {
+  width: 20px;
+  height: 20px;
+}
+.home-grid a .count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-dim);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  min-width: 22px;
+  text-align: center;
+}
+.home-grid a.empty {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.home-grid a.empty .count {
+  color: var(--dim);
+}
+@media (max-width: 640px) {
+  .nav-dropdown-panel {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 68px;
+    min-width: 0;
+    max-height: 72vh;
+    overflow-y: auto;
+  }
+  .nav-dropdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* .search-trigger zit op <pagefind-modal-trigger> (custom element); het
+   uiterlijk van de knop zelf komt van Pagefind's eigen --pf-*-theming
+   hierboven. Hier alleen container-gedrag in de header-flex. */
+.search-trigger {
+  flex: none;
+  margin-left: auto;
+}
+@media (max-width: 720px) {
+  .site-header .bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .site-nav {
+    gap: 0;
+  }
+  .site-nav a {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+}
+
+/* --- Pagina-header (kicker/h1/lede/facts) --------------------------------- */
+header.page-header {
+  padding: 56px 0 30px;
+}
+.kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.kicker a {
+  color: inherit;
+  border-bottom: none;
+  text-decoration: none;
+}
+.kicker a:hover {
+  text-decoration: underline;
+}
+.kicker .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 0;
+  background: var(--brand);
+  box-shadow: 0 0 14px var(--brand);
+}
+h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+h1 .em {
+  color: var(--brand);
+}
+.lede {
+  margin-top: 18px;
+  font-size: 1.1rem;
+  color: var(--muted);
+  max-width: 680px;
+}
+.lede b {
+  color: var(--text);
+  font-weight: 600;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin-top: 30px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.fact {
+  flex: 1 1 150px;
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.fact .l {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.fact .v {
+  margin-top: 5px;
+  font-weight: 600;
+  font-size: 0.96rem;
+}
+.fact .v.mono {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  color: var(--brand);
+}
+
+/* --- Secties/koppen -------------------------------------------------------- */
+main {
+  padding-bottom: 100px;
+}
+section {
+  padding: 44px 0;
+}
+.snum {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand-dim);
+  letter-spacing: 0.1em;
+}
+.band {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.band.found {
+  color: var(--info);
+  background: #eef3fc;
+  border: 1px solid #d6e1f6;
+}
+.band.work {
+  color: var(--brand-dim);
+  background: rgba(238, 114, 20, 0.1);
+  border: 1px solid rgba(238, 114, 20, 0.28);
+}
+.band.gov {
+  color: #475569;
+  background: var(--surface2);
+  border: 1px solid var(--border-lt);
+}
+.band.roll {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.24);
+}
+.band.pre {
+  color: #7e22ce;
+  background: rgba(147, 51, 234, 0.08);
+  border: 1px dashed rgba(147, 51, 234, 0.45);
+}
+.band.sec {
+  color: #b91c1c;
+  background: rgba(225, 29, 72, 0.09);
+  border: 1px solid rgba(225, 29, 72, 0.24);
+}
+h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  letter-spacing: -0.01em;
+  margin: 6px 0 10px;
+  line-height: 1.08;
+}
+h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 22px 0 8px;
+  letter-spacing: -0.01em;
+}
+.subttl {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-dim);
+  font-weight: 600;
+  margin: 24px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.subttl::before {
+  content: "";
+  width: 16px;
+  height: 2px;
+  background: var(--brand);
+}
+p {
+  color: var(--muted);
+}
+p + p {
+  margin-top: 12px;
+}
+p b,
+li b,
+td b {
+  color: var(--text);
+  font-weight: 600;
+}
+a {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(238, 114, 20, 0.3);
+}
+code {
+  font-family: var(--mono);
+  font-size: 0.84em;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 1.5px 6px;
+  border-radius: 0;
+  color: #334155;
+}
+pre {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  background: var(--surface2);
+  color: #334155;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 13px 15px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+}
+.cwrap {
+  position: relative;
+}
+.copybtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 3px 8px;
+  cursor: pointer;
+  z-index: 2;
+}
+.copybtn:hover,
+.copybtn.done {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+/* --- Linkrijen (blog/wiki-lijsten, was .layer) ----------------------------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0;
+}
+.layer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 14px 18px;
+  background: var(--surface);
+}
+a.layer {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+a.layer:hover {
+  border-color: var(--brand);
+  transform: translateX(3px);
+  box-shadow: 0 4px 18px rgba(238, 114, 20, 0.08);
+}
+a.layer .lt::after {
+  content: "\2192";
+  margin-left: 8px;
+  color: var(--brand);
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-weight: 700;
+}
+a.layer:hover .lt::after {
+  opacity: 1;
+}
+.layer .idx {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--brand);
+  min-width: 68px;
+  white-space: nowrap;
+}
+.layer .lt {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+.layer .ld {
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.layer .st {
+  margin-left: auto;
+  flex: none;
+}
+@media (max-width: 640px) {
+  .layer {
+    flex-wrap: wrap;
+  }
+  .layer .st {
+    margin-left: 0;
+  }
+}
+
+.zonelbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 26px 0 4px;
+  padding-left: 2px;
+}
+.zonelbl:first-child {
+  margin-top: 0;
+}
+.zonelbl a {
+  color: inherit;
+  border-bottom: none;
+  text-decoration: none;
+}
+.zonelbl a:hover {
+  color: var(--brand-dim);
+}
+
+.comptag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+  margin: 2px 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  padding: 9px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+.comptag .ci {
+  color: var(--info);
+  font-weight: 600;
+}
+.comptag .ab {
+  color: var(--brand-dim);
+  font-weight: 600;
+}
+.comptag b {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+a.srccard {
+  display: table;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 9px 14px;
+  margin-top: 8px;
+  font-size: 0.84rem;
+  transition: border-color 0.12s;
+}
+a.srccard:hover {
+  border-color: var(--brand);
+}
+a.srccard b {
+  color: var(--navy);
+  font-weight: 600;
+}
+a.srccard .u {
+  color: var(--dim);
+  margin-left: 10px;
+  font-size: 0.8rem;
+  font-family: var(--mono);
+}
+
+ol.phases {
+  margin: 12px 0;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: ph;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+ol.phases li {
+  position: relative;
+  padding-left: 38px;
+  color: var(--muted);
+  counter-increment: ph;
+}
+ol.phases li::before {
+  content: counter(ph);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--brand);
+}
+ol.phases li ul {
+  margin: 6px 0 2px;
+  gap: 5px;
+}
+ol.phases li ul li {
+  padding-left: 20px;
+  color: var(--muted);
+}
+ol.phases li ul li::before {
+  background: #9aa3b0;
+  width: 6px;
+  height: 6px;
+  top: 0.55em;
+}
+
+/* --- Tabellen ----------------------------------------------------------------
+   `overflow` heeft geen effect op een <table>-element zelf, dus elke tabel
+   (handgeschreven `.tbl`, en markdown-tabellen automatisch via
+   src/lib/rehype-wrap-tables.mjs) zit in een `.tbl`-wrapper-div. -------------- */
+.tbl {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 12px 0 18px;
+  background: var(--surface);
+}
+.tbl table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tbl caption {
+  caption-side: top;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 14px 18px 11px;
+}
+.tbl th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-dim);
+  font-weight: 600;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(238, 114, 20, 0.28);
+  background: #fcefe4;
+}
+.tbl td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.tbl tr:last-child td {
+  border-bottom: none;
+}
+.tbl td.cid {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--brand-dim);
+  font-weight: 600;
+  width: 34px;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+.tbl td.q {
+  color: var(--text);
+  font-weight: 500;
+}
+.tbl td.val {
+  color: var(--muted);
+}
+.flowline {
+  margin: 4px 0 16px;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+/* --- Badges ------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 0;
+  white-space: nowrap;
+}
+a.badge {
+  text-decoration: none;
+  border-bottom: none;
+  transition: opacity 0.12s;
+}
+a.badge:hover {
+  opacity: 0.75;
+}
+.client-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.client-tags-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.b-ok {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.24);
+}
+.b-part {
+  color: var(--brand-dim);
+  background: rgba(238, 114, 20, 0.1);
+  border: 1px solid rgba(238, 114, 20, 0.28);
+}
+.b-gap {
+  color: #be123c;
+  background: rgba(225, 29, 72, 0.09);
+  border: 1px solid rgba(225, 29, 72, 0.22);
+}
+.b-info {
+  color: #0369a1;
+  background: rgba(3, 105, 161, 0.1);
+  border: 1px solid rgba(3, 105, 161, 0.24);
+}
+.b-tbd {
+  color: var(--dim);
+  background: var(--surface2);
+  border: 1px dashed var(--border-lt);
+}
+.ft {
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px dotted var(--brand);
+  padding-bottom: 0.5px;
+}
+
+/* --- Callouts ------------------------------------------------------------- */
+.call {
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+.call::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.call.warn::before {
+  background: var(--brand);
+}
+.call.warn {
+  background: #fdeee3;
+  border-color: #fad5b9;
+}
+.call.info::before {
+  background: var(--info);
+}
+.call.info {
+  background: #eef3fc;
+  border-color: #d6e1f6;
+}
+.call.caution::before {
+  background: #e11d48;
+}
+.call.caution {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+.call.ok::before {
+  background: #16a34a;
+}
+.call.ok {
+  background: #eaf7ee;
+  border-color: #c3e9cf;
+}
+.callrow {
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+.callrow > .call {
+  flex: 1;
+  min-width: 260px;
+  margin: 0;
+}
+.call .ct {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.call.warn .ct {
+  color: var(--brand-dim);
+}
+.call.info .ct {
+  color: var(--info);
+}
+.call.caution .ct {
+  color: #b91c1c;
+}
+.call.ok .ct {
+  color: #15803d;
+}
+.call ul {
+  margin: 0;
+}
+.call p:last-child {
+  margin-bottom: 0;
+}
+
+ul {
+  list-style: none;
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+ul li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--muted);
+}
+ul li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  border-radius: 0;
+  background: var(--brand);
+}
+.call.caution ul li::before {
+  background: #e11d48;
+}
+.call.info ul li::before {
+  background: var(--info);
+}
+.call.ok ul li::before {
+  background: #16a34a;
+}
+
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 18px 24px 22px;
+  margin: 16px 0;
+  box-shadow: 0 6px 22px rgba(20, 24, 30, 0.07);
+}
+.sheet > h3:first-child {
+  margin-top: 6px;
+}
+.sheet > ol.phases:last-child,
+.sheet > p:last-child {
+  margin-bottom: 0;
+}
+
+figure {
+  margin: 24px 0;
+}
+figure svg {
+  width: 100%;
+  height: auto;
+}
+figcaption {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 8px;
+}
+
+/* --- Inhoud van artikelen (extra markdown-elementen) ----------------------- */
+.toc {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 18px;
+  margin: 24px 0 8px;
+}
+.toc ul {
+  margin: 8px 0 0;
+  gap: 5px;
+}
+.toc a {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+  border-bottom: none;
+}
+.toc a:hover {
+  color: var(--brand-dim);
+}
+article ol:not(.phases) {
+  margin: 14px 0;
+  padding-left: 22px;
+  color: var(--muted);
+}
+article blockquote {
+  border-left: 3px solid var(--brand);
+  padding: 4px 0 4px 16px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-style: italic;
+}
+article img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+}
+
+/* --- Pagefind zoeken (theming via --pf-* custom properties) ---------------- */
+:root {
+  --pf-text: var(--text);
+  --pf-text-secondary: var(--muted);
+  --pf-text-muted: var(--dim);
+  --pf-background: var(--surface);
+  --pf-border: var(--border);
+  --pf-border-focus: var(--brand);
+  --pf-hover: var(--surface2);
+  --pf-mark: var(--brand-dim);
+  --pf-outline-focus: var(--brand);
+  --pf-font: var(--sans);
+  --pf-border-radius: 0px;
+  --pf-shadow-lg: 0 16px 48px rgba(20, 24, 30, 0.22);
+  --pf-modal-backdrop: rgba(20, 24, 30, 0.5);
+}
+pagefind-modal-trigger {
+  font-family: var(--mono);
+}
+
+/* --- Mermaid-diagrammen ----------------------------------------------------- */
+.mermaid-wrap {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 24px 18px;
+  margin: 22px 0;
+  overflow-x: auto;
+  box-shadow: 0 6px 22px rgba(20, 24, 30, 0.06);
+}
+.mermaid-wrap svg {
+  max-width: 100%;
+}
+
+footer.site-footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+footer.site-footer .wrap {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#toTop {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1000;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--brand);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s;
+}
+#toTop.show {
+  display: flex;
+}
+#toTop:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 640px) {
+  header.page-header {
+    padding: 36px 0 22px;
+  }
+  .tbl table,
+  .tbl thead,
+  .tbl tbody,
+  .tbl th,
+  .tbl td,
+  .tbl tr {
+    display: block;
+  }
+  .tbl th {
+    display: none;
+  }
+  .tbl td {
+    border: none;
+    padding: 3px 16px;
+    width: auto !important;
+  }
+  .tbl td.cid {
+    padding-top: 12px;
+  }
+}
+@media print {
+  body {
+    background: #fff;
+  }
+  #toTop,
+  .site-header,
+  .search-trigger {
+    display: none;
+  }
+  section {
+    break-inside: avoid;
+  }
+}
+
+/* ==========================================================================
+   WIKI - permanent zijmenu (kennisbank-lay-out)
+   ========================================================================== */
+.wiki-shell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 48px;
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.wiki-sidebar {
+  position: sticky;
+  top: 82px;
+  flex: none;
+  width: 232px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 32px 4px 40px 0;
+}
+.wiki-sidebar-home {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: none;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.wiki-sidebar-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 8px 12px;
+  margin-bottom: 20px;
+  transition: border-color 0.12s, color 0.12s;
+}
+.wiki-sidebar-back:hover {
+  border-color: var(--brand);
+  color: var(--brand-dim);
+}
+.wiki-sidebar-back .arrow {
+  color: var(--brand);
+  font-weight: 700;
+}
+.wiki-cat {
+  margin-bottom: 6px;
+}
+.wiki-cat-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-decoration: none;
+  border-bottom: none;
+  padding: 10px 0 4px;
+}
+.wiki-cat-label:hover {
+  color: var(--brand-dim);
+}
+.wiki-cat-label.static {
+  cursor: default;
+}
+.wiki-cat-label.static:hover {
+  color: var(--dim);
+}
+.wiki-sidebar ul {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.wiki-sidebar ul li {
+  padding-left: 0;
+}
+.wiki-sidebar ul li::before {
+  content: none;
+}
+.wiki-sidebar ul a {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: none;
+  border-left: 2px solid transparent;
+  padding: 5px 0 5px 10px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.wiki-sidebar ul a:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+.wiki-sidebar ul a.active {
+  color: var(--brand-dim);
+  border-left-color: var(--brand);
+  background: var(--surface);
+  font-weight: 600;
+}
+.wiki-content {
+  flex: 0 1 860px;
+  min-width: 0;
+  max-width: 860px;
+  padding: 40px 0 100px;
+}
+.wiki-crumb {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.wiki-crumb a {
+  color: var(--dim);
+  border-bottom: none;
+  text-decoration: none;
+}
+.wiki-crumb a:hover {
+  color: var(--brand-dim);
+}
+h1.wiki-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.7rem, 3.6vw, 2.3rem);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.wiki-content .lede {
+  margin-top: 12px;
+  font-size: 1.02rem;
+  max-width: 640px;
+}
+.wiki-content .toc {
+  margin-top: 26px;
+}
+.wiki-content > article {
+  margin-top: 8px;
+}
+.wiki-content .zonelbl:first-of-type {
+  margin-top: 26px;
+}
+
+.wiki-nav-fab,
+.wiki-nav-scrim {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .wiki-shell {
+    display: block;
+    padding: 0 20px;
+  }
+  .wiki-content {
+    max-width: none;
+    padding: 28px 0 90px;
+  }
+  .wiki-nav-fab {
+    display: flex;
+    position: fixed;
+    left: 22px;
+    bottom: 22px;
+    z-index: 1100;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  }
+  .wiki-nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(20, 24, 30, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .wiki-nav-scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .wiki-sidebar {
+    position: fixed;
+    z-index: 1060;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    max-height: none;
+    width: min(280px, 82vw);
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    background: var(--surface);
+    padding: 26px 16px 90px;
+    box-shadow: 0 0 34px rgba(20, 24, 30, 0.16);
+  }
+  .wiki-sidebar.open {
+    transform: translateX(0);
+  }
+  body.wikinavopen {
+    overflow: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wiki-sidebar {
+    transition: none;
+  }
+}

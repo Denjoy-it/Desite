@@ -1,0 +1,12 @@
+---
+interface Props {
+  label: string;
+  mono?: boolean;
+}
+const { label, mono = false } = Astro.props;
+---
+
+<div class="fact">
+  <div class="l">{label}</div>
+  <div class={mono ? "v mono" : "v"}><slot /></div>
+</div>

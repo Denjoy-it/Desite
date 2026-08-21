@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "../../layouts/ArticleLayout.astro";
+import { formatDate } from "../../lib/format";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft);
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+---
+
+<ArticleLayout
+  title={post.data.title}
+  description={post.data.description}
+  kicker="Desite · Blog"
+  facts={[
+    { label: "Categorie", value: post.data.category },
+    { label: "Datum", value: formatDate(post.data.date), mono: true },
+  ]}
+  headings={headings}
+>
+  <Content />
+</ArticleLayout>

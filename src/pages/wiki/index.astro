@@ -1,0 +1,39 @@
+---
+import WikiLayout from "../../layouts/WikiLayout.astro";
+import ArticleListRow from "../../components/ArticleListRow.astro";
+import { CATEGORIES } from "../../content.config";
+import { slugifyCategory } from "../../lib/slug";
+import { getWikiByCategory } from "../../lib/wiki-nav";
+
+const byCategory = await getWikiByCategory();
+---
+
+<WikiLayout
+  title="Wiki"
+  description="Naslag over Microsoft cloud-beheer, gegroepeerd per productcategorie."
+>
+  <h1 class="wiki-title">Wiki</h1>
+  <p class="lede">Naslag over Microsoft cloud-beheer, gegroepeerd per productcategorie.</p>
+  {
+    CATEGORIES.map((cat) => {
+      const list = byCategory.get(cat) ?? [];
+      if (list.length === 0) return null;
+      return (
+        <>
+          <div class="zonelbl">
+            <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>{cat}</a>
+          </div>
+          <div class="stack">
+            {list.map((entry) => (
+              <ArticleListRow
+                href={`/wiki/${entry.id}/`}
+                title={entry.data.title}
+                description={entry.data.description}
+              />
+            ))}
+          </div>
+        </>
+      );
+    })
+  }
+</WikiLayout>

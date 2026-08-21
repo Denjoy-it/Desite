@@ -1,0 +1,32 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import ClientSidebar from "../components/ClientSidebar.astro";
+import MermaidInit from "../components/MermaidInit.astro";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  title: string;
+  description?: string;
+  activeId?: string;
+  pageHeadings?: Heading[];
+  noIndex?: boolean;
+}
+
+const { title, description, activeId, pageHeadings, noIndex } = Astro.props;
+---
+
+<BaseLayout title={`${title} - Desite`} description={description} noIndex={noIndex}>
+  <div class="wiki-shell">
+    <ClientSidebar activeId={activeId} pageHeadings={pageHeadings} />
+    <div class="wiki-content reveal">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>
+
+<MermaidInit />

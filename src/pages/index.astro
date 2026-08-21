@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import MsServiceIcon from "../components/icons/MsServiceIcon.astro";
+import { CATEGORIES } from "../content.config";
+import { slugifyCategory } from "../lib/slug";
+---
+
+<BaseLayout
+  title="Desite - Microsoft cloud-beheer kennisbank"
+  description="Kennisbank over Azure, Microsoft 365 en de rest van het Microsoft-cloud-landschap."
+>
+  <div class="wrap">
+    <header class="page-header reveal">
+      <div class="kicker"><span class="dot"></span> Desite</div>
+      <h1>Kennisbank voor <span class="em">Microsoft cloud-beheer</span></h1>
+      <p class="lede">
+        Alles over Azure, Microsoft 365 en de rest van het Microsoft-cloud-landschap, op een
+        plek - gegroepeerd per dienst.
+      </p>
+    </header>
+    <section class="reveal">
+      <div class="nav-dropdown-grid home-grid">
+        {
+          CATEGORIES.map((cat) => (
+            <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>
+              <MsServiceIcon name={cat} />
+              <span>{cat}</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </div>
+</BaseLayout>

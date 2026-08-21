@@ -1,0 +1,71 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import FactRow from "../components/FactRow.astro";
+import Fact from "../components/Fact.astro";
+import MermaidInit from "../components/MermaidInit.astro";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface FactItem {
+  label: string;
+  value: string;
+  mono?: boolean;
+}
+
+interface Props {
+  title: string;
+  description: string;
+  kicker: string;
+  facts?: FactItem[];
+  headings?: Heading[];
+}
+
+const { title, description, kicker, facts = [], headings = [] } = Astro.props;
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<BaseLayout title={`${title} - Desite`} description={description} noIndex>
+  <div class="wrap">
+    <header class="page-header reveal">
+      <div class="kicker"><span class="dot"></span> {kicker}</div>
+      <h1>{title}</h1>
+      {description && <p class="lede">{description}</p>}
+      {
+        facts.length > 0 && (
+          <FactRow>
+            {facts.map((f) => (
+              <Fact label={f.label} mono={f.mono}>
+                {f.value}
+              </Fact>
+            ))}
+          </FactRow>
+        )
+      }
+    </header>
+
+    {
+      toc.length > 0 && (
+        <nav class="toc">
+          <div class="zonelbl">Op deze pagina</div>
+          <ul>
+            {toc.map((h) => (
+              <li>
+                <a href={`#${h.slug}`}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
+
+    <article class="reveal">
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
+
+<MermaidInit />

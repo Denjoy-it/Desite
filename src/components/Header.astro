@@ -1,0 +1,70 @@
+---
+import SearchBox from "./SearchBox.astro";
+import MsServiceIcon from "./icons/MsServiceIcon.astro";
+import { CATEGORIES } from "../content.config";
+import { slugifyCategory } from "../lib/slug";
+
+const path = Astro.url.pathname;
+const isHome = path === "/";
+const isWiki = path.startsWith("/wiki");
+const isKlanten = path.startsWith("/klanten");
+---
+
+<header class="site-header">
+  <div class="bar">
+    <a class="site-title" href="/"><span class="dot">&#9679;</span> Desite</a>
+    <nav class="site-nav">
+      <a href="/" class={isHome ? "active" : ""}>Home</a>
+      <div class="nav-dropdown">
+        <button
+          class={`nav-dropdown-trigger${isWiki ? " active" : ""}`}
+          id="wikiMenuBtn"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="wikiMenuPanel"
+        >
+          Wiki
+          <svg viewBox="0 0 10 6" width="9" height="6" fill="none" stroke="currentColor" stroke-width="1.5"
+            ><path d="M1 1l4 4 4-4"></path></svg
+          >
+        </button>
+        <div class="nav-dropdown-panel" id="wikiMenuPanel">
+          <a class="nav-dropdown-all" href="/wiki/">Alle wiki-pagina's &rarr;</a>
+          <div class="nav-dropdown-grid">
+            {
+              CATEGORIES.map((cat) => (
+                <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>
+                  <MsServiceIcon name={cat} />
+                  <span>{cat}</span>
+                </a>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+      <a href="/klanten/" class={isKlanten ? "active" : ""}>Klanten</a>
+    </nav>
+    <SearchBox />
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById("wikiMenuBtn");
+  const panel = document.getElementById("wikiMenuPanel");
+  if (btn && panel) {
+    const set = (open: boolean) => {
+      panel.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      set(!panel.classList.contains("open"));
+    });
+    document.addEventListener("click", () => set(false));
+    panel.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") set(false);
+    });
+    panel.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => set(false)));
+  }
+</script>

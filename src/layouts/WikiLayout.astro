@@ -1,0 +1,31 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import WikiSidebar from "../components/WikiSidebar.astro";
+import MermaidInit from "../components/MermaidInit.astro";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  title: string;
+  description?: string;
+  activeId?: string;
+  pageHeadings?: Heading[];
+}
+
+const { title, description, activeId, pageHeadings } = Astro.props;
+---
+
+<BaseLayout title={`${title} - Desite`} description={description}>
+  <div class="wiki-shell">
+    <WikiSidebar activeId={activeId} pageHeadings={pageHeadings} />
+    <div class="wiki-content reveal">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>
+
+<MermaidInit />

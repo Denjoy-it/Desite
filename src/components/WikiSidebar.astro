@@ -1,0 +1,111 @@
+---
+import { getWikiByCategory } from "../lib/wiki-nav";
+import { slugifyCategory } from "../lib/slug";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  activeId?: string;
+  /** Als gezet: toon terugknop + hoofdstukken van deze pagina i.p.v. de categorieboom. */
+  pageHeadings?: Heading[];
+}
+
+const { activeId, pageHeadings } = Astro.props;
+const toc = (pageHeadings ?? []).filter((h) => h.depth === 2 || h.depth === 3);
+const showPageToc = pageHeadings !== undefined;
+
+const byCategory = showPageToc ? null : await getWikiByCategory();
+const groups = byCategory ? [...byCategory.entries()].filter(([, list]) => list.length > 0) : [];
+---
+
+<button
+  class="wiki-nav-fab"
+  id="wikiNavFab"
+  aria-label="Categorieen"
+  aria-expanded="false"
+  aria-controls="wikiSidenav"
+>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"
+    ><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg
+  >
+</button>
+<div class="wiki-nav-scrim" id="wikiNavScrim"></div>
+
+<nav class="wiki-sidebar" id="wikiSidenav" aria-label="Wiki-navigatie">
+  {
+    showPageToc ? (
+      <Fragment>
+        <a class="wiki-sidebar-back" href="/wiki/">
+          <span class="arrow">&#8592;</span> Alle categorieen
+        </a>
+        {toc.length > 0 && (
+          <div class="wiki-cat">
+            <div class="wiki-cat-label static">Op deze pagina</div>
+            <ul>
+              {toc.map((h) => (
+                <li>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Fragment>
+    ) : (
+      <Fragment>
+        <a class="wiki-sidebar-home" href="/wiki/">
+          Wiki - overzicht
+        </a>
+        {groups.map(([cat, list]) => (
+          <div class="wiki-cat">
+            <a class="wiki-cat-label" href={`/wiki/categorie/${slugifyCategory(cat)}/`}>
+              {cat}
+            </a>
+            <ul>
+              {list.map((entry) => (
+                <li>
+                  <a href={`/wiki/${entry.id}/`} class={entry.id === activeId ? "active" : ""}>
+                    {entry.data.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </Fragment>
+    )
+  }
+</nav>
+
+<script>
+  const fab = document.getElementById("wikiNavFab");
+  const nav = document.getElementById("wikiSidenav");
+  const scrim = document.getElementById("wikiNavScrim");
+  if (fab && nav && scrim) {
+    const MENU =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>';
+    const SLUIT =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>';
+    const set = (open: boolean) => {
+      nav.classList.toggle("open", open);
+      scrim.classList.toggle("open", open);
+      document.body.classList.toggle("wikinavopen", open);
+      fab.setAttribute("aria-expanded", open ? "true" : "false");
+      fab.setAttribute("aria-label", open ? "Categorieen sluiten" : "Categorieen");
+      fab.innerHTML = open ? SLUIT : MENU;
+    };
+    fab.addEventListener("click", () => set(!nav.classList.contains("open")));
+    scrim.addEventListener("click", () => set(false));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") set(false);
+    });
+    nav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => set(false)));
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 900) set(false);
+    });
+  }
+</script>

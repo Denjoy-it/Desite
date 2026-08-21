@@ -1,0 +1,60 @@
+/* ==========================================================================
+   DESITE - DESIGN TOKENS
+   Overgenomen uit de QUBE-huisstijl (oplevering/index.html): platte vormen,
+   oranje/navy accent, IBM Plex + Familjen Grotesk. Dit bestand is de ene
+   bron voor kleuren en typografie - pas je hier iets aan, dan verandert het
+   overal mee.
+   ========================================================================== */
+:root {
+  --bg: #f4f5f7;
+  --bg2: #eceef2;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --border: #e3e6eb;
+  --border-lt: #d3d8df;
+
+  --text: #161a20;
+  --muted: #586170;
+  --dim: #8b929e;
+
+  --brand: #ee7214;
+  --brand-dim: #b85510;
+
+  --allow: #16a34a;
+  --block: #e11d48;
+  --ctrl: #2563eb;
+  --warn: #b45309;
+  --info: #03295a;
+  --navy: #03295a;
+
+  --radius: 0px;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --display: "Familjen Grotesk", var(--sans);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  line-height: 1.65;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

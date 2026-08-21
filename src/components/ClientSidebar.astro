@@ -1,0 +1,102 @@
+---
+import { getAllClients } from "../lib/client-nav";
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  activeId?: string;
+  /** Als gezet: toon terugknop + hoofdstukken van deze pagina i.p.v. de klantenlijst. */
+  pageHeadings?: Heading[];
+}
+
+const { activeId, pageHeadings } = Astro.props;
+const toc = (pageHeadings ?? []).filter((h) => h.depth === 2 || h.depth === 3);
+const showPageToc = pageHeadings !== undefined;
+
+const clients = showPageToc ? [] : await getAllClients();
+---
+
+<button
+  class="wiki-nav-fab"
+  id="clientNavFab"
+  aria-label="Klanten"
+  aria-expanded="false"
+  aria-controls="clientSidenav"
+>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"
+    ><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg
+  >
+</button>
+<div class="wiki-nav-scrim" id="clientNavScrim"></div>
+
+<nav class="wiki-sidebar" id="clientSidenav" aria-label="Klanten-navigatie">
+  {
+    showPageToc ? (
+      <Fragment>
+        <a class="wiki-sidebar-back" href="/klanten/">
+          <span class="arrow">&#8592;</span> Alle klanten
+        </a>
+        {toc.length > 0 && (
+          <div class="wiki-cat">
+            <div class="wiki-cat-label static">Op deze pagina</div>
+            <ul>
+              {toc.map((h) => (
+                <li>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Fragment>
+    ) : (
+      <Fragment>
+        <a class="wiki-sidebar-home" href="/klanten/">
+          Klanten - overzicht
+        </a>
+        <ul>
+          {clients.map((c) => (
+            <li>
+              <a href={`/klanten/${c.id}/`} class={c.id === activeId ? "active" : ""}>
+                {c.data.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </Fragment>
+    )
+  }
+</nav>
+
+<script>
+  const fab = document.getElementById("clientNavFab");
+  const nav = document.getElementById("clientSidenav");
+  const scrim = document.getElementById("clientNavScrim");
+  if (fab && nav && scrim) {
+    const MENU =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>';
+    const SLUIT =
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>';
+    const set = (open: boolean) => {
+      nav.classList.toggle("open", open);
+      scrim.classList.toggle("open", open);
+      document.body.classList.toggle("wikinavopen", open);
+      fab.setAttribute("aria-expanded", open ? "true" : "false");
+      fab.setAttribute("aria-label", open ? "Klanten sluiten" : "Klanten");
+      fab.innerHTML = open ? SLUIT : MENU;
+    };
+    fab.addEventListener("click", () => set(!nav.classList.contains("open")));
+    scrim.addEventListener("click", () => set(false));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") set(false);
+    });
+    nav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => set(false)));
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 900) set(false);
+    });
+  }
+</script>

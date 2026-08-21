@@ -1,0 +1,11 @@
+<button id="toTop" aria-label="Naar boven" title="Naar boven">&#8593;</button>
+
+<script>
+  const b = document.getElementById("toTop");
+  if (b) {
+    const c = () => b.classList.toggle("show", window.scrollY > 400);
+    window.addEventListener("scroll", c, { passive: true });
+    b.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+    c();
+  }
+</script>

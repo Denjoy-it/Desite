@@ -1,0 +1,87 @@
+---
+import { getCollection, render } from "astro:content";
+import ClientLayout from "../../layouts/ClientLayout.astro";
+import FactRow from "../../components/FactRow.astro";
+import Fact from "../../components/Fact.astro";
+import ArticleListRow from "../../components/ArticleListRow.astro";
+import { getRelatedWikiByCategory, getRelatedBlogPosts } from "../../lib/client-nav";
+import { formatDate } from "../../lib/format";
+import { CATEGORIES } from "../../content.config";
+import { slugifyCategory } from "../../lib/slug";
+import MsServiceIcon from "../../components/icons/MsServiceIcon.astro";
+
+export async function getStaticPaths() {
+  const clients = await getCollection("clients");
+  return clients.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const wikiByCategory = await getRelatedWikiByCategory(entry.id);
+const relatedBlog = await getRelatedBlogPosts(entry.id);
+---
+
+<ClientLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  activeId={entry.id}
+  pageHeadings={headings}
+>
+  <div class="wiki-crumb">
+    <a href="/klanten/">Klanten</a> <span>/</span> <span>{entry.data.title}</span>
+  </div>
+  <h1 class="wiki-title">{entry.data.title}</h1>
+  {entry.data.description && <p class="lede">{entry.data.description}</p>}
+  {
+    entry.data.facts.length > 0 && (
+      <FactRow>
+        {entry.data.facts.map((f) => (
+          <Fact label={f.label} mono={f.mono}>
+            {f.value}
+          </Fact>
+        ))}
+      </FactRow>
+    )
+  }
+  <article>
+    <Content />
+  </article>
+  <h2>Categorieën voor deze klant</h2>
+  <div class="nav-dropdown-grid home-grid">
+    {
+      CATEGORIES.map((cat) => {
+        const count = wikiByCategory.get(cat)?.length ?? 0;
+        return (
+          <a
+            href={count > 0 ? `/wiki/categorie/${slugifyCategory(cat)}/` : undefined}
+            class={count === 0 ? "empty" : ""}
+          >
+            <MsServiceIcon name={cat} />
+            <span>{cat}</span>
+            <span class="count">{count}</span>
+          </a>
+        );
+      })
+    }
+  </div>
+  {
+    relatedBlog.length > 0 && (
+      <Fragment>
+        <div class="zonelbl">Gerelateerde blogposts</div>
+        <div class="stack">
+          {relatedBlog.map((p) => (
+            <ArticleListRow
+              href={`/blog/${p.id}/`}
+              index={formatDate(p.data.date)}
+              title={p.data.title}
+              description={p.data.description}
+            />
+          ))}
+        </div>
+      </Fragment>
+    )
+  }
+</ClientLayout>

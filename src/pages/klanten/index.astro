@@ -1,0 +1,26 @@
+---
+import ClientLayout from "../../layouts/ClientLayout.astro";
+import ArticleListRow from "../../components/ArticleListRow.astro";
+import { getAllClients } from "../../lib/client-nav";
+
+const clients = await getAllClients();
+---
+
+<ClientLayout
+  title="Klanten"
+  description="Interne naslag per klant: tenant-info, contactpersonen en omgevingsinrichting."
+>
+  <h1 class="wiki-title">Klanten</h1>
+  <p class="lede">
+    Interne naslag per klant - tenant-info, contactpersonen, afspraken en omgevingsinrichting.
+    Universele how-to's blijven in de <a href="/wiki/">wiki</a>.
+  </p>
+  <div class="stack">
+    {
+      clients.map((c) => (
+        <ArticleListRow href={`/klanten/${c.id}/`} title={c.data.title} description={c.data.description} />
+      ))
+    }
+  </div>
+  {clients.length === 0 && <p>Nog geen klanten toegevoegd.</p>}
+</ClientLayout>
