@@ -9,7 +9,8 @@ import rehypeNumberSections from "./src/lib/rehype-number-sections.mjs";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "http://localhost:4321",
+  site: "https://denjoy-it.github.io",
+  base: "/Desite",
   integrations: [mdx(), pagefind()],
   markdown: {
     syntaxHighlight: {
