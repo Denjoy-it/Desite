@@ -56,7 +56,7 @@ const relatedBlog = await getRelatedBlogPosts(entry.id);
         const count = wikiByCategory.get(cat)?.length ?? 0;
         return (
           <a
-            href={count > 0 ? `/wiki/categorie/${slugifyCategory(cat)}/` : undefined}
+            href={count > 0 ? `/klanten/${entry.id}/categorie/${slugifyCategory(cat)}/` : undefined}
             class={count === 0 ? "empty" : ""}
           >
             <MsServiceIcon name={cat} />

@@ -1103,14 +1103,48 @@ footer.site-footer .wrap {
     padding-top: 12px;
   }
 }
+.export-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 7px 14px;
+  background: none;
+  border: 1px solid var(--border-lt);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+.export-pdf-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 @media print {
   body {
     background: #fff;
   }
   #toTop,
   .site-header,
-  .search-trigger {
+  .search-trigger,
+  .wiki-sidebar,
+  .wiki-nav-fab,
+  .wiki-nav-scrim,
+  .export-pdf-btn,
+  footer.site-footer {
     display: none;
+  }
+  .wiki-shell {
+    display: block;
+    max-width: 100%;
+  }
+  .wiki-content {
+    max-width: 100%;
+    margin: 0;
   }
   section {
     break-inside: avoid;

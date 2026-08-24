@@ -53,6 +53,7 @@ const wiki = defineCollection({
     category: categoryEnum,
     order: z.number().default(0),
     clients: z.array(z.string()).default([]),
+    draft: z.boolean().default(false),
   }),
 });
 

@@ -13,7 +13,9 @@ export async function getStaticPaths() {
 }
 
 const { category } = Astro.props;
-const pages = (await getCollection("wiki", ({ data }) => data.category === category)).sort(
+const pages = (
+  await getCollection("wiki", ({ data }) => data.category === category && !data.draft)
+).sort(
   (a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title),
 );
 ---

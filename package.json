@@ -9,7 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "import-docx": "node scripts/import-docx.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.2.2",
@@ -24,5 +25,12 @@
   "allowScripts": {
     "esbuild@0.28.2": true,
     "fsevents@2.3.3": true
+  },
+  "devDependencies": {
+    "gray-matter": "^4.0.3",
+    "mammoth": "^1.12.1",
+    "node-html-parser": "^9.0.1",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
   }
 }

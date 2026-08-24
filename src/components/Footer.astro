@@ -1,6 +1,13 @@
 <footer class="site-footer">
   <div class="wrap">
     <span>Desite &middot; Microsoft cloud-beheer kennisbank</span>
+    {
+      import.meta.env.DEV && (
+        <a href="http://localhost:4555" target="_blank" rel="noopener">
+          Word-document importeren
+        </a>
+      )
+    }
     <span>&copy; {new Date().getFullYear()}</span>
   </div>
 </footer>

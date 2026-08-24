@@ -12,7 +12,10 @@ export async function getAllClients(): Promise<ClientEntry[]> {
 }
 
 export async function getRelatedWikiPages(clientId: string) {
-  const wiki = await getCollection("wiki", ({ data }) => data.clients.includes(clientId));
+  const wiki = await getCollection(
+    "wiki",
+    ({ data }) => data.clients.includes(clientId) && !data.draft,
+  );
   return wiki.sort((a, b) => a.data.title.localeCompare(b.data.title));
 }
 

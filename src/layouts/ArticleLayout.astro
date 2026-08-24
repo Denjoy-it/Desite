@@ -3,6 +3,7 @@ import BaseLayout from "./BaseLayout.astro";
 import FactRow from "../components/FactRow.astro";
 import Fact from "../components/Fact.astro";
 import MermaidInit from "../components/MermaidInit.astro";
+import ExportPdfButton from "../components/ExportPdfButton.astro";
 
 interface Heading {
   depth: number;
@@ -62,6 +63,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
       )
     }
 
+    <ExportPdfButton />
     <article class="reveal">
       <slot />
     </article>

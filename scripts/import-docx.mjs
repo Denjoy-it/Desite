@@ -1,0 +1,689 @@
+#!/usr/bin/env node
+// Lokale tool: zet een Word-document (.docx) om naar een concept-wiki-artikel
+// (Markdown met frontmatter) in src/content/wiki/, plus een review-wachtrij
+// om die concepten te beoordelen en te publiceren. Draait alleen op je eigen
+// machine (npm run import-docx), bindt expliciet aan 127.0.0.1 - geen login,
+// dus niet aan het netwerk blootstellen. Geen deploy-impact.
+//
+// Gebruik: npm run import-docx
+// - "/" - upload een .docx (titel/beschrijving/categorie/klant(en) invullen,
+//   dan klikken/slepen); komt als concept (draft: true) in src/content/wiki/.
+// - "/drafts" - overzicht van alle concepten in de wachtrij.
+// - "/drafts/edit?slug=..." - ruwe Markdown-editor per concept: opslaan
+//   (blijft concept), publiceren (zet draft: false) of verwijderen.
+
+import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import mammoth from "mammoth";
+import TurndownService from "turndown";
+import { gfm } from "turndown-plugin-gfm";
+import matter from "gray-matter";
+import { parse as parseHtml } from "node-html-parser";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
+const WIKI_DIR = path.join(ROOT, "src/content/wiki");
+const CLIENTS_DIR = path.join(ROOT, "src/content/clients");
+const PORT = 4555;
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB ruwe bestandsgrootte
+
+// Moet gelijk blijven aan CATEGORIES in src/content.config.ts - los gehouden
+// omdat dat bestand "astro:content" importeert en dus niet als los Node-
+// script te draaien is.
+const CATEGORIES = [
+  "Algemeen",
+  "Azure",
+  "Microsoft 365",
+  "Entra ID",
+  "Exchange Online",
+  "SharePoint",
+  "Teams",
+  "Office",
+  "Defender",
+  "Intune",
+  "Compliance & Purview",
+  "PowerShell",
+  "Windows Server & Client",
+  "Netwerken",
+];
+
+function slugify(title) {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+}
+
+function readFrontmatterFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".md") || f.endsWith(".mdx"))
+    .map((f) => {
+      const raw = fs.readFileSync(path.join(dir, f), "utf-8");
+      const { data } = matter(raw);
+      return { id: f.replace(/\.mdx?$/, ""), data };
+    });
+}
+
+function getClients() {
+  return readFrontmatterFiles(CLIENTS_DIR)
+    .map((c) => ({ id: c.id, title: c.data.title ?? c.id }))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function nextOrder(category) {
+  const existing = readFrontmatterFiles(WIKI_DIR).filter((e) => e.data.category === category);
+  if (existing.length === 0) return 1;
+  return Math.max(...existing.map((e) => Number(e.data.order) || 0)) + 1;
+}
+
+function uniqueSlug(base) {
+  const existingIds = new Set(readFrontmatterFiles(WIKI_DIR).map((e) => e.id));
+  if (!existingIds.has(base)) return base;
+  let n = 2;
+  while (existingIds.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+// Wachtrij: alle wiki-concepten (draft: true), voor het overzicht op /drafts.
+function listDrafts() {
+  return readFrontmatterFiles(WIKI_DIR)
+    .filter((e) => e.data.draft === true)
+    .map((e) => ({
+      slug: e.id,
+      title: e.data.title ?? e.id,
+      category: e.data.category ?? "",
+      clients: Array.isArray(e.data.clients) ? e.data.clients : [],
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function draftFilePath(slug) {
+  // Geen padtraversal: alleen een kale bestandsnaam zonder / of .. toestaan.
+  if (!/^[a-z0-9-]+$/.test(slug)) return null;
+  const p = path.join(WIKI_DIR, `${slug}.md`);
+  return fs.existsSync(p) ? p : null;
+}
+
+const turndownService = new TurndownService({
+  headingStyle: "atx",
+  codeBlockStyle: "fenced",
+});
+turndownService.use(gfm);
+
+// Mammoth-tabellen hebben twee eigenschappen die turndown-plugin-gfm niet
+// zelfstandig aankan:
+// 1. Elke cel is een platte <td>, ook de koprij (Word kent geen <th>-
+//    equivalent) - de plugin herkent een tabel alleen met een echte koprij.
+//    Aanname: de eerste rij is de koprij; klopt dat een keer niet, is dat te
+//    corrigeren in het weggeschreven concept.
+// 2. Celinhoud staat in <p>-tags. turndown-plugin-gfm's cell()-helper plakt
+//    de geconverteerde celinhoud ruw tussen "| ... |" zonder newlines eruit
+//    te halen (zie node_modules/turndown-plugin-gfm) - een <p> erin levert
+//    dus een kapotte, meerregelige tabelrij op. Fix: <p>'s in een cel
+//    uitpakken (samenvoegen met <br> bij meerdere alinea's) vóór turndown.
+function normalizeTableHtml(html) {
+  const root = parseHtml(html);
+  for (const table of root.querySelectorAll("table")) {
+    const firstRow = table.querySelector("tr");
+    if (firstRow) {
+      const asHeader = firstRow.outerHTML
+        .replace(/<td(\s|>)/g, "<th$1")
+        .replace(/<\/td>/g, "</th>");
+      firstRow.replaceWith(asHeader);
+    }
+    for (const cell of table.querySelectorAll("td, th")) {
+      const paragraphs = cell.childNodes.filter((n) => n.tagName === "P");
+      if (paragraphs.length === 0) continue;
+      cell.innerHTML = paragraphs.map((p) => p.innerHTML.trim()).join("<br>");
+    }
+  }
+  return root.toString();
+}
+
+async function convertDocxToMarkdown(buffer) {
+  const { value: rawHtml, messages } = await mammoth.convertToHtml({ buffer });
+  const html = normalizeTableHtml(rawHtml);
+  const markdown = turndownService.turndown(html);
+  return { markdown, warnings: messages.filter((m) => m.type === "warning") };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
+}
+
+// CSS die alle pagina's van deze tool delen (nav, basislayout, formulierstijl).
+const SHARED_STYLE = `
+  * { box-sizing: border-box; }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; background: #f4f5f7; color: #161a20; margin: 0; padding: 0 20px 120px; }
+  .wrap { max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #e3e6eb; padding: 32px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.lede { color: #586170; margin: 0 0 28px; font-size: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 6px; }
+  input[type="text"], textarea, select {
+    width: 100%; padding: 9px 10px; border: 1px solid #d3d8df; font-family: inherit; font-size: 14px;
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  .chk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-top: 4px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; margin: 0; }
+  .chk input { width: auto; }
+  .hint { color: #8b929e; font-size: 12px; }
+
+  /* Topnav: schakelen tussen uploaden en de concepten-wachtrij. */
+  .topnav { max-width: 640px; margin: 0 auto; padding: 18px 0 22px; display: flex; gap: 6px; }
+  .topnav a {
+    font-size: 13px; font-weight: 600; color: #586170; text-decoration: none;
+    padding: 7px 14px; border: 1px solid #e3e6eb; background: #fff;
+  }
+  .topnav a.active { color: #fff; background: #161a20; border-color: #161a20; }
+  .topnav a .badge {
+    display: inline-block; margin-left: 6px; background: #ee7214; color: #fff;
+    border-radius: 999px; font-size: 11px; padding: 1px 7px;
+  }
+
+  /* Conceptenlijst */
+  .draft-row {
+    display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #e3e6eb;
+  }
+  .draft-row:last-child { border-bottom: none; }
+  .draft-row .meta { flex: 1; min-width: 0; }
+  .draft-row .title { font-weight: 600; font-size: 14px; }
+  .draft-row .sub { color: #8b929e; font-size: 12px; margin-top: 2px; }
+  .draft-row a.editbtn {
+    font-size: 13px; font-weight: 600; color: #ee7214; text-decoration: none; white-space: nowrap;
+  }
+  .empty-state { color: #8b929e; font-size: 14px; padding: 20px 0; }
+
+  /* Editor */
+  #editor {
+    width: 100%; min-height: 60vh; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px; line-height: 1.6; padding: 16px; border: 1px solid #d3d8df; resize: vertical;
+  }
+  .editor-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .editor-actions button { border: none; padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  #btnPublish { background: #16a34a; color: #fff; }
+  #btnSave { background: #161a20; color: #fff; }
+  #btnDelete { background: none; color: #e11d48; border: 1px solid #e11d48 !important; margin-left: auto; }
+  #editorMsg { margin-top: 12px; font-size: 13px; padding: 10px 12px; display: none; }
+  #editorMsg.ok { display: block; background: #eafaf0; border: 1px solid #16a34a; }
+  #editorMsg.err { display: block; background: #fdecec; border: 1px solid #e11d48; }
+
+  /* Upload-knop: dubbelt als dropzone. Klik opent de bestandskiezer; slepen
+     werkt ook. Zodra er een bestand gekozen/gesleept is, start de upload
+     automatisch - geen aparte "verstuur"-stap. */
+  #dropzone {
+    margin-top: 18px; border: 2px dashed #d3d8df; padding: 22px; text-align: center;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  #dropzone:hover, #dropzone.drag { border-color: #ee7214; background: #fff7f0; }
+  #dropzone .btn {
+    display: inline-flex; align-items: center; gap: 8px; background: #ee7214; color: #fff;
+    border: none; padding: 11px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  #dropzone .filehint { margin-top: 10px; font-size: 12px; color: #8b929e; }
+  #fileInput { display: none; }
+
+  /* Statusbalk: vast onderaan het scherm, blijft zichtbaar tijdens en na de
+     achtergrondconversie zodat je nooit hoeft te wachten op een blokkerend
+     dialoogvenster. */
+  #statusbar {
+    position: fixed; left: 0; right: 0; bottom: 0; transform: translateY(100%);
+    background: #161a20; color: #fff; padding: 14px 20px; font-size: 13px;
+    transition: transform .2s ease; z-index: 100;
+  }
+  #statusbar.show { transform: translateY(0); }
+  #statusbar .row { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  #statusbar .spinner {
+    width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25);
+    border-top-color: #ee7214; animation: spin .7s linear infinite; flex: none;
+  }
+  #statusbar.ok .spinner, #statusbar.err .spinner { display: none; }
+  #statusbar .icon-ok, #statusbar .icon-err { display: none; font-size: 15px; flex: none; }
+  #statusbar.ok .icon-ok { display: inline; color: #4ade80; }
+  #statusbar.err .icon-err { display: inline; color: #f87171; }
+  #statusbar .text { flex: 1; white-space: pre-wrap; }
+  #statusbar .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: #ee7214; width: 40%; animation: indeterminate 1.1s ease-in-out infinite; }
+  #statusbar.ok .bar, #statusbar.err .bar { display: none; }
+  #statusbar .dismiss { background: none; border: none; color: #8b929e; cursor: pointer; font-size: 18px; line-height: 1; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }`;
+
+function pageShell(title, activeNav, bodyHtml) {
+  const draftCount = listDrafts().length;
+  return `<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desite - ${escapeHtml(title)}</title>
+<style>${SHARED_STYLE}</style>
+</head>
+<body>
+<nav class="topnav">
+  <a href="/"${activeNav === "upload" ? ' class="active"' : ""}>Uploaden</a>
+  <a href="/drafts"${activeNav === "drafts" ? ' class="active"' : ""}>Concepten${draftCount ? `<span class="badge">${draftCount}</span>` : ""}</a>
+</nav>
+${bodyHtml}
+</body>
+</html>`;
+}
+
+function renderForm() {
+  const clients = getClients();
+  const categoryOptions = CATEGORIES.map(
+    (c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`,
+  ).join("");
+  const clientCheckboxes = clients.length
+    ? clients
+        .map(
+          (c) =>
+            `<label class="chk"><input type="checkbox" name="clients" value="${escapeHtml(c.id)}"> ${escapeHtml(c.title)}</label>`,
+        )
+        .join("")
+    : `<p class="hint">Nog geen klanten in src/content/clients/.</p>`;
+
+  const body = `
+<div class="wrap">
+  <h1>Word-document importeren</h1>
+  <p class="lede">Vul de metadata in, kies daarna een .docx (of sleep 'm op de knop) - de upload en conversie starten meteen op de achtergrond. Zet een concept dat als draft in src/content/wiki/ komt: bekijk 'm daarna op de <a href="/drafts">conceptenpagina</a> om na te lezen en te publiceren.</p>
+  <form id="f">
+    <label for="title">Titel</label>
+    <input type="text" id="title" required>
+
+    <label for="description">Beschrijving (1-2 zinnen, voor de wiki-lijst)</label>
+    <textarea id="description" required></textarea>
+
+    <label for="category">Categorie</label>
+    <select id="category">${categoryOptions}</select>
+
+    <label>Klant(en) (optioneel)</label>
+    <div class="chk-grid">${clientCheckboxes}</div>
+
+    <div id="dropzone">
+      <input type="file" id="fileInput" accept=".docx">
+      <button type="button" class="btn" id="pickBtn">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"></path></svg>
+        Word-bestand uploaden (.docx)
+      </button>
+      <div class="filehint">Klik, of sleep een .docx op deze knop</div>
+    </div>
+  </form>
+</div>
+<div id="statusbar">
+  <div class="bar"></div>
+  <div class="row">
+    <span class="spinner"></span>
+    <span class="icon-ok">&#10003;</span>
+    <span class="icon-err">&#10007;</span>
+    <span class="text" id="statusText"></span>
+    <button class="dismiss" id="statusDismiss" title="Sluiten">&times;</button>
+  </div>
+</div>
+<script>
+  const titleEl = document.getElementById("title");
+  const descEl = document.getElementById("description");
+  const categoryEl = document.getElementById("category");
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const pickBtn = document.getElementById("pickBtn");
+  const statusbar = document.getElementById("statusbar");
+  const statusText = document.getElementById("statusText");
+  const statusDismiss = document.getElementById("statusDismiss");
+
+  function setStatus(state, text) {
+    statusbar.className = "show" + (state ? " " + state : "");
+    statusText.textContent = text;
+  }
+  statusDismiss.addEventListener("click", () => statusbar.classList.remove("show"));
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadAndConvert(file) {
+    if (!titleEl.value.trim() || !descEl.value.trim()) {
+      setStatus("err", "Vul eerst titel en beschrijving in voor je een bestand uploadt.");
+      return;
+    }
+    setStatus("", "Bezig met uploaden en converteren op de achtergrond: " + file.name + "...");
+    try {
+      const fileBase64 = await fileToBase64(file);
+      const clients = [...document.querySelectorAll('input[name="clients"]:checked')].map((c) => c.value);
+      const res = await fetch("/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          fileBase64,
+          title: titleEl.value,
+          description: descEl.value,
+          category: categoryEl.value,
+          clients,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Onbekende fout");
+      setStatus(
+        "ok",
+        "Klaar - concept opgeslagen: " + data.path +
+        (data.warnings?.length ? "\\nWaarschuwingen: " + data.warnings.join("; ") : "") +
+        "\\nBekijk 'm op de conceptenpagina om na te lezen en te publiceren."
+      );
+      titleEl.value = "";
+      descEl.value = "";
+      document.querySelectorAll('input[name="clients"]:checked').forEach((c) => (c.checked = false));
+    } catch (err) {
+      setStatus("err", "Mislukt: " + err.message);
+    }
+  }
+
+  pickBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) uploadAndConvert(fileInput.files[0]);
+    fileInput.value = "";
+  });
+  ["dragenter", "dragover"].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("drag"); })
+  );
+  ["dragleave", "drop"].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); })
+  );
+  dropzone.addEventListener("drop", (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) uploadAndConvert(file);
+  });
+</script>`;
+  return pageShell("Word importeren", "upload", body);
+}
+
+function renderDraftsList() {
+  const drafts = listDrafts();
+  const rows = drafts.length
+    ? drafts
+        .map(
+          (d) => `<div class="draft-row">
+    <div class="meta">
+      <div class="title">${escapeHtml(d.title)}</div>
+      <div class="sub">${escapeHtml(d.category)}${d.clients.length ? " &middot; " + escapeHtml(d.clients.join(", ")) : ""} &middot; <code>${escapeHtml(d.slug)}.md</code></div>
+    </div>
+    <a class="editbtn" href="/drafts/edit?slug=${encodeURIComponent(d.slug)}">Beoordelen &rarr;</a>
+  </div>`,
+        )
+        .join("")
+    : `<p class="empty-state">Geen concepten in de wachtrij. Nieuwe uploads verschijnen hier automatisch.</p>`;
+
+  const body = `<div class="wrap">
+  <h1>Concepten - wachtrij</h1>
+  <p class="lede">Wiki-pagina's die via een Word-upload zijn omgezet en nog op <code>draft: true</code> staan. Beoordeel de inhoud, ruim de opmaak op waar nodig, en publiceer of verwijder.</p>
+  ${rows}
+</div>`;
+  return pageShell("Concepten", "drafts", body);
+}
+
+function renderDraftEditor(slug, content) {
+  const body = `<div class="wrap">
+  <h1>Concept beoordelen</h1>
+  <p class="lede"><code>${escapeHtml(slug)}.md</code> &mdash; ruwe Markdown incl. frontmatter. Wijzig wat nodig is en publiceer zodra het klaar is.</p>
+  <textarea id="editor">${escapeHtml(content)}</textarea>
+  <div class="editor-actions">
+    <button id="btnSave">Opslaan (blijft concept)</button>
+    <button id="btnPublish">Publiceren</button>
+    <button id="btnDelete" type="button">Verwijderen</button>
+  </div>
+  <div id="editorMsg"></div>
+</div>
+<script>
+  const slug = ${JSON.stringify(slug)};
+  const editor = document.getElementById("editor");
+  const msg = document.getElementById("editorMsg");
+
+  function setMsg(state, text) {
+    msg.className = state;
+    msg.textContent = text;
+  }
+
+  async function post(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Onbekende fout");
+    return data;
+  }
+
+  document.getElementById("btnSave").addEventListener("click", async () => {
+    try {
+      await post("/drafts/save", { slug, content: editor.value });
+      setMsg("ok", "Opgeslagen (blijft concept).");
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+
+  document.getElementById("btnPublish").addEventListener("click", async () => {
+    try {
+      await post("/drafts/save", { slug, content: editor.value });
+      await post("/drafts/publish", { slug });
+      window.location.href = "/drafts";
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+
+  document.getElementById("btnDelete").addEventListener("click", async () => {
+    if (!confirm("Dit concept definitief verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    try {
+      await post("/drafts/delete", { slug });
+      window.location.href = "/drafts";
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+</script>`;
+  return pageShell("Concept beoordelen", "drafts", body);
+}
+
+async function handleImport(req, res) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_UPLOAD_BYTES * 1.4) {
+      res.writeHead(413, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "Bestand te groot (max 25MB)." }));
+      req.destroy();
+      return;
+    }
+    chunks.push(chunk);
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "Ongeldige aanvraag." }));
+    return;
+  }
+
+  const { title, description, category, clients = [], fileBase64 } = payload;
+  if (!title?.trim() || !description?.trim() || !category || !fileBase64) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "Titel, beschrijving, categorie en bestand zijn verplicht." }));
+    return;
+  }
+  if (!CATEGORIES.includes(category)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "Onbekende categorie." }));
+    return;
+  }
+
+  try {
+    const buffer = Buffer.from(fileBase64, "base64");
+    const { markdown, warnings } = await convertDocxToMarkdown(buffer);
+
+    const slug = uniqueSlug(slugify(title));
+    const order = nextOrder(category);
+    const frontmatter = {
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      order,
+      clients: Array.isArray(clients) ? clients : [],
+      draft: true,
+    };
+
+    const file = matter.stringify(`\n${markdown}\n`, frontmatter);
+    if (!fs.existsSync(WIKI_DIR)) fs.mkdirSync(WIKI_DIR, { recursive: true });
+    const outPath = path.join(WIKI_DIR, `${slug}.md`);
+    fs.writeFileSync(outPath, file, "utf-8");
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        ok: true,
+        path: path.relative(ROOT, outPath),
+        warnings: warnings.map((w) => w.message),
+      }),
+    );
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: err.message }));
+  }
+}
+
+async function readJsonBody(req, res, maxBytes = 2 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxBytes) {
+      res.writeHead(413, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "Aanvraag te groot." }));
+      req.destroy();
+      return null;
+    }
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "Ongeldige aanvraag." }));
+    return null;
+  }
+}
+
+function sendJson(res, status, body) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+async function handleDraftSave(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const { slug, content } = payload;
+  const filePath = draftFilePath(slug);
+  if (!filePath) return sendJson(res, 404, { ok: false, error: "Concept niet gevonden." });
+  if (typeof content !== "string" || !content.trim()) {
+    return sendJson(res, 400, { ok: false, error: "Lege inhoud." });
+  }
+  let parsed;
+  try {
+    parsed = matter(content);
+  } catch (err) {
+    return sendJson(res, 400, { ok: false, error: "Frontmatter kan niet worden gelezen: " + err.message });
+  }
+  const { title, description, category } = parsed.data ?? {};
+  if (!title || !description || !category) {
+    return sendJson(res, 400, {
+      ok: false,
+      error: "title, description en category zijn verplicht in de frontmatter.",
+    });
+  }
+  if (!CATEGORIES.includes(category)) {
+    return sendJson(res, 400, { ok: false, error: `Onbekende categorie "${category}".` });
+  }
+  fs.writeFileSync(filePath, content, "utf-8");
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleDraftPublish(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const filePath = draftFilePath(payload.slug);
+  if (!filePath) return sendJson(res, 404, { ok: false, error: "Concept niet gevonden." });
+  const raw = fs.readFileSync(filePath, "utf-8");
+  const parsed = matter(raw);
+  parsed.data.draft = false;
+  fs.writeFileSync(filePath, matter.stringify(parsed.content, parsed.data), "utf-8");
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleDraftDelete(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const filePath = draftFilePath(payload.slug);
+  if (!filePath) return sendJson(res, 404, { ok: false, error: "Concept niet gevonden." });
+  fs.unlinkSync(filePath);
+  sendJson(res, 200, { ok: true });
+}
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, "http://localhost");
+
+  if (req.method === "GET" && url.pathname === "/") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(renderForm());
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/import") {
+    handleImport(req, res);
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/drafts") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(renderDraftsList());
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/drafts/edit") {
+    const slug = url.searchParams.get("slug") ?? "";
+    const filePath = draftFilePath(slug);
+    if (!filePath) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Concept niet gevonden.");
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(renderDraftEditor(slug, fs.readFileSync(filePath, "utf-8")));
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/drafts/save") return handleDraftSave(req, res);
+  if (req.method === "POST" && url.pathname === "/drafts/publish") return handleDraftPublish(req, res);
+  if (req.method === "POST" && url.pathname === "/drafts/delete") return handleDraftDelete(req, res);
+
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("Not found");
+});
+
+// Alleen op localhost bereikbaar: dit endpoint heeft geen login en kan
+// bestanden in de repo schrijven/verwijderen, dus niet aan het netwerk
+// blootstellen (Node bindt anders standaard aan alle interfaces).
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`\nWord-import klaar op http://localhost:${PORT}\nOpen dit adres in je browser. Ctrl+C om te stoppen.\n`);
+});

@@ -4,7 +4,7 @@ import { CATEGORIES } from "../content.config";
 export type WikiEntry = CollectionEntry<"wiki">;
 
 export async function getWikiByCategory(): Promise<Map<string, WikiEntry[]>> {
-  const pages = await getCollection("wiki");
+  const pages = await getCollection("wiki", ({ data }) => !data.draft);
   const byCategory = new Map<string, WikiEntry[]>();
   for (const cat of CATEGORIES) byCategory.set(cat, []);
   for (const entry of pages) byCategory.get(entry.data.category)?.push(entry);

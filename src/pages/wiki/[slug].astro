@@ -2,9 +2,10 @@
 import { getCollection, render } from "astro:content";
 import WikiLayout from "../../layouts/WikiLayout.astro";
 import { slugifyCategory } from "../../lib/slug";
+import ExportPdfButton from "../../components/ExportPdfButton.astro";
 
 export async function getStaticPaths() {
-  const pages = await getCollection("wiki");
+  const pages = await getCollection("wiki", ({ data }) => !data.draft);
   return pages.map((entry) => ({
     params: { slug: entry.id },
     props: { entry },
@@ -42,6 +43,7 @@ const linkedClients = allClients.filter((c) => entry.data.clients.includes(c.id)
       </div>
     )
   }
+  <ExportPdfButton />
   <article>
     <Content />
   </article>
