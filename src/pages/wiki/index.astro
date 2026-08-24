@@ -6,6 +6,7 @@ import { slugifyCategory } from "../../lib/slug";
 import { getWikiByCategory } from "../../lib/wiki-nav";
 
 const byCategory = await getWikiByCategory();
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <WikiLayout
@@ -21,12 +22,12 @@ const byCategory = await getWikiByCategory();
       return (
         <>
           <div class="zonelbl">
-            <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>{cat}</a>
+            <a href={`${base}wiki/categorie/${slugifyCategory(cat)}/`}>{cat}</a>
           </div>
           <div class="stack">
             {list.map((entry) => (
               <ArticleListRow
-                href={`/wiki/${entry.id}/`}
+                href={`${base}wiki/${entry.id}/`}
                 title={entry.data.title}
                 description={entry.data.description}
               />

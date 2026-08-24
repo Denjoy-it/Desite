@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <BaseLayout title="Pagina niet gevonden - Desite">
@@ -7,7 +8,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <header class="page-header reveal">
       <div class="kicker"><span class="dot"></span> 404</div>
       <h1>Pagina niet gevonden</h1>
-      <p class="lede">Deze pagina bestaat niet (meer). Ga terug naar de <a href="/">homepage</a>.</p>
+      <p class="lede">Deze pagina bestaat niet (meer). Ga terug naar de <a href={base}>homepage</a>.</p>
     </header>
   </div>
 </BaseLayout>

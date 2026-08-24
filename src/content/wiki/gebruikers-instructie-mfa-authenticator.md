@@ -55,24 +55,24 @@ flowchart TD
 </ol>
 
 <figure>
-  <img src="/wiki/mfa-authenticator/01-prompt.png" alt="Aanmeldscherm met het verzoek om meer informatie in te vullen voor MFA" />
+  <img src="../mfa-authenticator/01-prompt.png" alt="Aanmeldscherm met het verzoek om meer informatie in te vullen voor MFA" />
   <figcaption>Stap 1-2 — het verzoek dat verschijnt bij het inloggen op de beveiligingspagina</figcaption>
 </figure>
 
 <figure>
-  <img src="/wiki/mfa-authenticator/02-download-app.png" alt="Scherm met instructie om de Microsoft Authenticator-app te downloaden" />
+  <img src="../mfa-authenticator/02-download-app.png" alt="Scherm met instructie om de Microsoft Authenticator-app te downloaden" />
   <figcaption>Stap 4 — de app downloaden op uw telefoon</figcaption>
 </figure>
 
 <figure>
-  <img src="/wiki/mfa-authenticator/03-qrcode.png" alt="Scherm met de QR-code die gescand moet worden met de Authenticator-app" />
+  <img src="../mfa-authenticator/03-qrcode.png" alt="Scherm met de QR-code die gescand moet worden met de Authenticator-app" />
   <figcaption>Stap 5 — de QR-code scannen (de stap waar het vaakst iets misgaat)</figcaption>
 </figure>
 
 <div class="call info"><div class="ct"><span>&#9670;</span> Lukt scannen niet?</div><p>Zorg dat de camera van uw telefoon toegang heeft tot de Authenticator-app (vraag daarom bij de eerste keer openen), en dat de QR-code op uw computerscherm volledig zichtbaar is - niet gedeeltelijk buiten beeld of door een ander venster overlapt.</p></div>
 
 <figure>
-  <img src="/wiki/mfa-authenticator/04-success.png" alt="Bevestigingsscherm dat de Authenticator-app succesvol is gekoppeld" />
+  <img src="../mfa-authenticator/04-success.png" alt="Bevestigingsscherm dat de Authenticator-app succesvol is gekoppeld" />
   <figcaption>Stap 7 — bevestiging dat de koppeling gelukt is</figcaption>
 </figure>
 

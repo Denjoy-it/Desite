@@ -18,6 +18,7 @@ const toc = (pageHeadings ?? []).filter((h) => h.depth === 2 || h.depth === 3);
 const showPageToc = pageHeadings !== undefined;
 
 const clients = showPageToc ? [] : await getAllClients();
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <button
@@ -37,7 +38,7 @@ const clients = showPageToc ? [] : await getAllClients();
   {
     showPageToc ? (
       <Fragment>
-        <a class="wiki-sidebar-back" href="/klanten/">
+        <a class="wiki-sidebar-back" href={`${base}klanten/`}>
           <span class="arrow">&#8592;</span> Alle klanten
         </a>
         {toc.length > 0 && (
@@ -55,13 +56,13 @@ const clients = showPageToc ? [] : await getAllClients();
       </Fragment>
     ) : (
       <Fragment>
-        <a class="wiki-sidebar-home" href="/klanten/">
+        <a class="wiki-sidebar-home" href={`${base}klanten/`}>
           Klanten - overzicht
         </a>
         <ul>
           {clients.map((c) => (
             <li>
-              <a href={`/klanten/${c.id}/`} class={c.id === activeId ? "active" : ""}>
+              <a href={`${base}klanten/${c.id}/`} class={c.id === activeId ? "active" : ""}>
                 {c.data.title}
               </a>
             </li>

@@ -4,6 +4,7 @@ import ArticleListRow from "../../components/ArticleListRow.astro";
 import { getAllClients } from "../../lib/client-nav";
 
 const clients = await getAllClients();
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <ClientLayout
@@ -13,12 +14,12 @@ const clients = await getAllClients();
   <h1 class="wiki-title">Klanten</h1>
   <p class="lede">
     Interne naslag per klant - tenant-info, contactpersonen, afspraken en omgevingsinrichting.
-    Universele how-to's blijven in de <a href="/wiki/">wiki</a>.
+    Universele how-to's blijven in de <a href={`${base}wiki/`}>wiki</a>.
   </p>
   <div class="stack">
     {
       clients.map((c) => (
-        <ArticleListRow href={`/klanten/${c.id}/`} title={c.data.title} description={c.data.description} />
+        <ArticleListRow href={`${base}klanten/${c.id}/`} title={c.data.title} description={c.data.description} />
       ))
     }
   </div>

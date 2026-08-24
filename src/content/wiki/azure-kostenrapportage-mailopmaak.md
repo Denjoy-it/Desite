@@ -6,7 +6,7 @@ order: 5
 clients: ["landschappen"]
 ---
 
-Dit artikel bouwt voort op [Azure Kostenrapportage: inrichtingssjabloon voor een nieuwe klant](/wiki/azure-kostenrapportage-sjabloon/) (de architectuur met de Service Principal) en documenteert de ontwerpgeschiedenis van de mailopmaak zelf: welke problemen elke versie oploste, en welke keuzes bij een volgende klant-inrichting terugkomen.
+Dit artikel bouwt voort op [Azure Kostenrapportage: inrichtingssjabloon voor een nieuwe klant](../azure-kostenrapportage-sjabloon/) (de architectuur met de Service Principal) en documenteert de ontwerpgeschiedenis van de mailopmaak zelf: welke problemen elke versie oploste, en welke keuzes bij een volgende klant-inrichting terugkomen.
 
 ## Het matching-probleem: naam versus SubscriptionId
 
@@ -78,4 +78,4 @@ Diagnose, van snel naar grondig:
 |---|---|---|
 | **ADR-0006 — SubscriptionId als matching-sleutel** | Elke matching van kostendata tussen periodes (huidige maand tegen historie, of service-niveau vergelijking) gebeurt op SubscriptionId, nooit op naam — een subscriptienaam kan wijzigen, de GUID niet. | <span class="badge b-ok">Accepted</span> |
 
-De Service Principal-architectuur voor mail en kostendata (ADR-0004, ingehaald door ADR-0005) staat beschreven in [Azure Kostenrapportage: inrichtingssjabloon voor een nieuwe klant](/wiki/azure-kostenrapportage-sjabloon/).
+De Service Principal-architectuur voor mail en kostendata (ADR-0004, ingehaald door ADR-0005) staat beschreven in [Azure Kostenrapportage: inrichtingssjabloon voor een nieuwe klant](../azure-kostenrapportage-sjabloon/).

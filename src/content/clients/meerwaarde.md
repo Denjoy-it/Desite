@@ -13,7 +13,7 @@ facts:
 
 ## Omgeving
 
-Meerwaarde gebruikt Microsoft 365 met Exchange Online en heeft Azure-kostenrapportage ingericht (zie het algemene [Azure Kostenrapportage-sjabloon](/wiki/azure-kostenrapportage-sjabloon/)).
+Meerwaarde gebruikt Microsoft 365 met Exchange Online en heeft Azure-kostenrapportage ingericht (zie het algemene [Azure Kostenrapportage-sjabloon](../../wiki/azure-kostenrapportage-sjabloon/)).
 
 ## Bijzonderheden
 

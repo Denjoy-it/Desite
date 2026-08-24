@@ -4,7 +4,11 @@ import MsServiceIcon from "./icons/MsServiceIcon.astro";
 import { CATEGORIES } from "../content.config";
 import { slugifyCategory } from "../lib/slug";
 
-const path = Astro.url.pathname;
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
+const rawPath = Astro.url.pathname;
+// Astro.url.pathname bevat het base-pad (bv. "/Desite/wiki/...") - voor de
+// actieve-status-vergelijking normaliseren we terug naar "/wiki/..." vorm.
+const path = rawPath.startsWith(base) ? rawPath.slice(base.length - 1) : rawPath;
 const isHome = path === "/";
 const isWiki = path.startsWith("/wiki");
 const isKlanten = path.startsWith("/klanten");
@@ -12,9 +16,9 @@ const isKlanten = path.startsWith("/klanten");
 
 <header class="site-header">
   <div class="bar">
-    <a class="site-title" href="/"><span class="dot">&#9679;</span> Desite</a>
+    <a class="site-title" href={base}><span class="dot">&#9679;</span> Desite</a>
     <nav class="site-nav">
-      <a href="/" class={isHome ? "active" : ""}>Home</a>
+      <a href={base} class={isHome ? "active" : ""}>Home</a>
       <div class="nav-dropdown">
         <button
           class={`nav-dropdown-trigger${isWiki ? " active" : ""}`}
@@ -29,11 +33,11 @@ const isKlanten = path.startsWith("/klanten");
           >
         </button>
         <div class="nav-dropdown-panel" id="wikiMenuPanel">
-          <a class="nav-dropdown-all" href="/wiki/">Alle wiki-pagina's &rarr;</a>
+          <a class="nav-dropdown-all" href={`${base}wiki/`}>Alle wiki-pagina's &rarr;</a>
           <div class="nav-dropdown-grid">
             {
               CATEGORIES.map((cat) => (
-                <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>
+                <a href={`${base}wiki/categorie/${slugifyCategory(cat)}/`}>
                   <MsServiceIcon name={cat} />
                   <span>{cat}</span>
                 </a>
@@ -42,7 +46,7 @@ const isKlanten = path.startsWith("/klanten");
           </div>
         </div>
       </div>
-      <a href="/klanten/" class={isKlanten ? "active" : ""}>Klanten</a>
+      <a href={`${base}klanten/`} class={isKlanten ? "active" : ""}>Klanten</a>
     </nav>
     <SearchBox />
   </div>

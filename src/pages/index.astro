@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import MsServiceIcon from "../components/icons/MsServiceIcon.astro";
 import { CATEGORIES } from "../content.config";
 import { slugifyCategory } from "../lib/slug";
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <BaseLayout
@@ -22,7 +23,7 @@ import { slugifyCategory } from "../lib/slug";
       <div class="nav-dropdown-grid home-grid">
         {
           CATEGORIES.map((cat) => (
-            <a href={`/wiki/categorie/${slugifyCategory(cat)}/`}>
+            <a href={`${base}wiki/categorie/${slugifyCategory(cat)}/`}>
               <MsServiceIcon name={cat} />
               <span>{cat}</span>
             </a>

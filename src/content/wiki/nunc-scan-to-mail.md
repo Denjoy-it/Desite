@@ -6,7 +6,7 @@ order: 2
 clients: ["nunc-capital"]
 ---
 
-Deze inrichting volgt de algemene procedure uit [Scan-to-Mail: MX-relay of Microsoft 365](/wiki/scan-to-mail-sjabloon/) — dit artikel documenteert alleen de concrete waarden en bevindingen specifiek voor NUNC Capital.
+Deze inrichting volgt de algemene procedure uit [Scan-to-Mail: MX-relay of Microsoft 365](../scan-to-mail-sjabloon/) — dit artikel documenteert alleen de concrete waarden en bevindingen specifiek voor NUNC Capital.
 
 ## Situatie
 

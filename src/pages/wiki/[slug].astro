@@ -17,6 +17,7 @@ const { Content, headings } = await render(entry);
 
 const allClients = await getCollection("clients");
 const linkedClients = allClients.filter((c) => entry.data.clients.includes(c.id));
+const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
 <WikiLayout
@@ -26,8 +27,8 @@ const linkedClients = allClients.filter((c) => entry.data.clients.includes(c.id)
   pageHeadings={headings}
 >
   <div class="wiki-crumb">
-    <a href="/wiki/">Wiki</a> <span>/</span>
-    <a href={`/wiki/categorie/${slugifyCategory(entry.data.category)}/`}>{entry.data.category}</a>
+    <a href={`${base}wiki/`}>Wiki</a> <span>/</span>
+    <a href={`${base}wiki/categorie/${slugifyCategory(entry.data.category)}/`}>{entry.data.category}</a>
   </div>
   <h1 class="wiki-title">{entry.data.title}</h1>
   {entry.data.description && <p class="lede">{entry.data.description}</p>}
@@ -36,7 +37,7 @@ const linkedClients = allClients.filter((c) => entry.data.clients.includes(c.id)
       <div class="client-tags">
         <span class="client-tags-label">Klant:</span>
         {linkedClients.map((c) => (
-          <a class="badge b-info" href={`/klanten/${c.id}/`}>
+          <a class="badge b-info" href={`${base}klanten/${c.id}/`}>
             {c.data.title}
           </a>
         ))}
