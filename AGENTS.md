@@ -39,6 +39,21 @@ per concept (frontmatter + inhoud in één tekstveld):
   wachtrij en verschijnt live op de site.
 - **Verwijderen** - verwijdert het conceptbestand definitief (met bevestiging).
 
+**Nieuw concept starten** (knop bovenaan `/drafts`): begint een artikel vanuit
+het huisstijl-sjabloon (titel + categorie invullen, de rest is skelet) in
+plaats van vanuit een Word-upload - handig voor artikelen die je direct in de
+tool wil schrijven. In de editor staat ook een **huisstijl-spiekbriefje**
+(inklapbaar): syntax voor koppen, `ol.phases`-stappen, callouts en een
+Mermaid-diagram, met een verwijzing naar `azure-bastion-toegang.md` als
+volledig uitgewerkt voorbeeld. Dit is bewust *geen* automatische opmaak - het
+maakt handmatig consistent opmaken alleen sneller.
+
+De knop **"Opmaken volgens huisstijl (AI)"** staat in de editor maar is nog
+uitgeschakeld: dat zou de ruwe conversie naar Claude sturen om te
+herstructureren naar de huisstijl, voordat een mens 'm beoordeelt. Vereist een
+eigen Anthropic API-key en brengt kleine kosten per document met zich mee -
+bewust nog niet aangezet totdat daarvoor gekozen wordt.
+
 Er is bewust geen login: dit draait alleen lokaal, en wie de repo kan
 bewerken kon het bestand toch al rechtstreeks aanpassen. Zodra de site ooit
 live gaat voor mensen zonder repo-toegang, is een git-based CMS (bijv. Decap

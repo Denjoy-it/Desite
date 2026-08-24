@@ -129,6 +129,16 @@ bestandstoegang. Gaat de site ooit live voor mensen zonder repo-toegang,
 vervang dit tooltje dan door een git-based CMS (Decap CMS/Keystatic) in
 plaats van er een login aan toe te voegen.
 
+Vanaf `/drafts` kun je ook een **nieuw concept starten vanuit het
+huisstijl-sjabloon** (titel + categorie, geen upload nodig), en de editor
+heeft een inklapbaar **huisstijl-spiekbriefje** (koppen, `ol.phases`,
+callouts, Mermaid) met een verwijzing naar `azure-bastion-toegang.md` als
+volledig voorbeeld - puur als hulpmiddel bij handmatig opmaken, geen
+automatische opmaak. Een knop **"Opmaken volgens huisstijl (AI)"** staat
+klaar maar uitgeschakeld: die zou de conversie naar Claude sturen om te
+herstructureren, maar vereist een eigen Anthropic API-key en brengt kosten
+per document met zich mee.
+
 Tijdens `npm run dev` staat er een link "Word-document importeren" in de
 footer van de site (alleen zichtbaar in dev, via `import.meta.env.DEV`) die
 naar deze tool wijst.

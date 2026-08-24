@@ -49,6 +49,44 @@ const CATEGORIES = [
   "Netwerken",
 ];
 
+// Skelet voor een nieuw huisstijl-artikel - zie ook src/content/wiki/azure-bastion-toegang.md
+// als volledig uitgewerkt voorbeeld. Wordt gebruikt door "Nieuw concept starten"
+// én getoond als spiekbriefje in de concept-editor.
+const HOUSE_STYLE_TEMPLATE_BODY = `Korte inleidende alinea: wat is de context, wat lost dit artikel op, voor wie is het bedoeld.
+
+## Eerste hoofdstuk
+
+Uitleg-tekst. Gebruik een callout voor iets dat extra aandacht verdient:
+
+<div class="call info"><div class="ct"><span>&#9670;</span> Titel van de tip</div><p>Uitleg van de tip.</p></div>
+
+Andere callout-varianten: <code>call warn</code> (let op), <code>call caution</code> (waarschuwing/risico), <code>call ok</code> (positief/geslaagd).
+
+## Stappen
+
+<ol class="phases">
+<li><b>Eerste stap.</b> Uitleg wat je doet en waarom.</li>
+<li><b>Tweede stap.</b> Uitleg.</li>
+</ol>
+
+## Diagram (optioneel, alleen als een plaatje het proces echt verduidelijkt)
+
+\`\`\`mermaid
+flowchart LR
+    A[Start] --> B[Einde]
+\`\`\`
+
+## Besluiten (alleen als er een architecturale keuze is vastgelegd)
+
+| ADR | Besluit | Status |
+|---|---|---|
+| **ADR-0001 — Titel van het besluit** | Korte beschrijving van wat er is besloten en waarom. | <span class="badge b-ok">Accepted</span> |
+
+## Bronnen
+
+- [Titel van de bron](https://learn.microsoft.com/...)
+`;
+
 function slugify(title) {
   return title
     .toLowerCase()
@@ -215,6 +253,33 @@ const SHARED_STYLE = `
   #editorMsg { margin-top: 12px; font-size: 13px; padding: 10px 12px; display: none; }
   #editorMsg.ok { display: block; background: #eafaf0; border: 1px solid #16a34a; }
   #editorMsg.err { display: block; background: #fdecec; border: 1px solid #e11d48; }
+  #btnAiFormat {
+    background: #fff; color: #8b929e; border: 1px solid #d3d8df !important; cursor: not-allowed;
+  }
+
+  /* Huisstijl-spiekbriefje: helpt bij handmatig opmaken, geen automatisering. */
+  .cheatsheet { margin-top: 22px; border: 1px solid #e3e6eb; }
+  .cheatsheet summary {
+    padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; background: #f4f5f7;
+  }
+  .cheatsheet .inner { padding: 16px; }
+  .cheatsheet h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #8b929e; margin: 16px 0 6px; }
+  .cheatsheet h3:first-child { margin-top: 0; }
+  .cheatsheet pre {
+    background: #161a20; color: #e3e6eb; padding: 10px 12px; font-size: 11.5px; line-height: 1.5;
+    overflow-x: auto; font-family: "IBM Plex Mono", ui-monospace, monospace; white-space: pre-wrap;
+  }
+  .cheatsheet ul { margin: 0; padding-left: 18px; font-size: 13px; color: #586170; }
+  .cheatsheet ul li { margin: 4px 0; }
+  .cheatsheet .example-link { font-size: 12px; }
+
+  /* "Nieuw concept starten" - klein formulier bovenaan de conceptenlijst. */
+  .new-draft-box {
+    border: 1px dashed #d3d8df; padding: 16px; margin-bottom: 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .new-draft-box .field { flex: 1; min-width: 160px; }
+  .new-draft-box label { margin: 0 0 4px; }
+  .new-draft-box button { background: #161a20; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
 
   /* Upload-knop: dubbelt als dropzone. Klik opent de bestandskiezer; slepen
      werkt ook. Zodra er een bestand gekozen/gesleept is, start de upload
@@ -425,12 +490,95 @@ function renderDraftsList() {
         .join("")
     : `<p class="empty-state">Geen concepten in de wachtrij. Nieuwe uploads verschijnen hier automatisch.</p>`;
 
+  const categoryOptions = CATEGORIES.map(
+    (c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`,
+  ).join("");
+
   const body = `<div class="wrap">
   <h1>Concepten - wachtrij</h1>
-  <p class="lede">Wiki-pagina's die via een Word-upload zijn omgezet en nog op <code>draft: true</code> staan. Beoordeel de inhoud, ruim de opmaak op waar nodig, en publiceer of verwijder.</p>
+  <p class="lede">Wiki-pagina's die via een Word-upload zijn omgezet, of hier direct gestart, en nog op <code>draft: true</code> staan. Beoordeel de inhoud, ruim de opmaak op waar nodig, en publiceer of verwijder.</p>
+
+  <form id="newDraftForm" class="new-draft-box">
+    <div class="field">
+      <label for="newTitle">Nieuw concept starten - titel</label>
+      <input type="text" id="newTitle" placeholder="Titel van het nieuwe artikel" required>
+    </div>
+    <div class="field" style="flex: 0 0 200px;">
+      <label for="newCategory">Categorie</label>
+      <select id="newCategory">${categoryOptions}</select>
+    </div>
+    <button type="submit">Starten vanuit sjabloon</button>
+  </form>
+
   ${rows}
-</div>`;
+</div>
+<script>
+  document.getElementById("newDraftForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("newTitle").value.trim();
+    const category = document.getElementById("newCategory").value;
+    if (!title) return;
+    const res = await fetch("/drafts/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, category }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      window.location.href = "/drafts/edit?slug=" + encodeURIComponent(data.slug);
+    } else {
+      alert("Mislukt: " + (data.error || "Onbekende fout"));
+    }
+  });
+</script>`;
   return pageShell("Concepten", "drafts", body);
+}
+
+function renderCheatsheet() {
+  return `<details class="cheatsheet">
+  <summary>Huisstijl-spiekbriefje (klik om te openen)</summary>
+  <div class="inner">
+    <p class="example-link">Volledig uitgewerkt voorbeeld: <code>src/content/wiki/azure-bastion-toegang.md</code></p>
+
+    <h3>Koppen</h3>
+    <p style="font-size:13px;color:#586170;margin:0">Gebruik echte Markdown-koppen (<code>##</code>, <code>###</code>) - nooit <b>vetgedrukte tekst</b> als vervanging. Zonder echte koppen krijgt de pagina geen inhoudsopgave.</p>
+
+    <h3>Stappen</h3>
+    <pre>&lt;ol class="phases"&gt;
+&lt;li&gt;&lt;b&gt;Eerste stap.&lt;/b&gt; Uitleg.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;Tweede stap.&lt;/b&gt; Uitleg.&lt;/li&gt;
+&lt;/ol&gt;</pre>
+
+    <h3>Callouts</h3>
+    <pre>&lt;div class="call info"&gt;&lt;div class="ct"&gt;&lt;span&gt;&amp;#9670;&lt;/span&gt; Titel&lt;/div&gt;&lt;p&gt;Tekst.&lt;/p&gt;&lt;/div&gt;</pre>
+    <ul>
+      <li><code>call info</code> - context/toelichting</li>
+      <li><code>call warn</code> - let op</li>
+      <li><code>call caution</code> - waarschuwing/risico</li>
+      <li><code>call ok</code> - positief/geslaagd</li>
+    </ul>
+
+    <h3>Diagram (optioneel)</h3>
+    <pre>\`\`\`mermaid
+flowchart LR
+    A[Start] --&gt; B[Einde]
+\`\`\`</pre>
+
+    <h3>Besluiten (optioneel)</h3>
+    <pre>| ADR | Besluit | Status |
+|---|---|---|
+| **ADR-0001 — Titel** | Beschrijving. | &lt;span class="badge b-ok"&gt;Accepted&lt;/span&gt; |</pre>
+
+    <h3>Checklist voor je publiceert</h3>
+    <ul>
+      <li>Echte <code>##</code>/<code>###</code> koppen, geen vetgedrukte pseudo-koppen</li>
+      <li>Stappenlijst? Gebruik <code>ol.phases</code>, niet een gewone genummerde lijst</li>
+      <li>Belangrijke tip/waarschuwing/bevinding? Gebruik een callout</li>
+      <li>Meerstaps-proces waar een plaatje het verduidelijkt? Overweeg een Mermaid-diagram</li>
+      <li>Sluit af met Bronnen (en Besluiten, indien van toepassing)</li>
+    </ul>
+  </div>
+</details>`;
 }
 
 function renderDraftEditor(slug, content) {
@@ -441,9 +589,11 @@ function renderDraftEditor(slug, content) {
   <div class="editor-actions">
     <button id="btnSave">Opslaan (blijft concept)</button>
     <button id="btnPublish">Publiceren</button>
+    <button id="btnAiFormat" type="button" disabled title="Nog niet actief - vereist een eigen Anthropic API-key. Zie AGENTS.md.">Opmaken volgens huisstijl (AI) - binnenkort</button>
     <button id="btnDelete" type="button">Verwijderen</button>
   </div>
   <div id="editorMsg"></div>
+  ${renderCheatsheet()}
 </div>
 <script>
   const slug = ${JSON.stringify(slug)};
@@ -594,6 +744,31 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+async function handleDraftNew(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const { title, category } = payload;
+  if (!title?.trim()) return sendJson(res, 400, { ok: false, error: "Titel is verplicht." });
+  if (!CATEGORIES.includes(category)) {
+    return sendJson(res, 400, { ok: false, error: "Onbekende categorie." });
+  }
+
+  const slug = uniqueSlug(slugify(title));
+  const order = nextOrder(category);
+  const frontmatter = {
+    title: title.trim(),
+    description: "TODO: een zin die samenvat waar dit artikel over gaat.",
+    category,
+    order,
+    clients: [],
+    draft: true,
+  };
+  const file = matter.stringify(`\n${HOUSE_STYLE_TEMPLATE_BODY}`, frontmatter);
+  if (!fs.existsSync(WIKI_DIR)) fs.mkdirSync(WIKI_DIR, { recursive: true });
+  fs.writeFileSync(path.join(WIKI_DIR, `${slug}.md`), file, "utf-8");
+  sendJson(res, 200, { ok: true, slug });
+}
+
 async function handleDraftSave(req, res) {
   const payload = await readJsonBody(req, res);
   if (!payload) return;
@@ -673,6 +848,7 @@ const server = http.createServer((req, res) => {
     res.end(renderDraftEditor(slug, fs.readFileSync(filePath, "utf-8")));
     return;
   }
+  if (req.method === "POST" && url.pathname === "/drafts/new") return handleDraftNew(req, res);
   if (req.method === "POST" && url.pathname === "/drafts/save") return handleDraftSave(req, res);
   if (req.method === "POST" && url.pathname === "/drafts/publish") return handleDraftPublish(req, res);
   if (req.method === "POST" && url.pathname === "/drafts/delete") return handleDraftDelete(req, res);
