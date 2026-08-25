@@ -2,6 +2,7 @@
 import BaseLayout from "./BaseLayout.astro";
 import ClientSidebar from "../components/ClientSidebar.astro";
 import MermaidInit from "../components/MermaidInit.astro";
+import KlantGate from "../components/KlantGate.astro";
 
 interface Heading {
   depth: number;
@@ -14,19 +15,22 @@ interface Props {
   description?: string;
   activeId?: string;
   pageHeadings?: Heading[];
-  noIndex?: boolean;
+  /** SHA-256-hash van de passphrase van deze specifieke klant (naast de masterpassphrase). */
+  gateHashes?: (string | undefined)[];
 }
 
-const { title, description, activeId, pageHeadings, noIndex } = Astro.props;
+const { title, description, activeId, pageHeadings, gateHashes = [] } = Astro.props;
 ---
 
-<BaseLayout title={`${title} - Desite`} description={description} noIndex={noIndex}>
-  <div class="wiki-shell">
-    <ClientSidebar activeId={activeId} pageHeadings={pageHeadings} />
-    <div class="wiki-content reveal">
-      <slot />
+<BaseLayout title={`${title} - Desite`} description={description} noIndex={true}>
+  <KlantGate extraHashes={gateHashes}>
+    <div class="wiki-shell">
+      <ClientSidebar activeId={activeId} pageHeadings={pageHeadings} />
+      <div class="wiki-content reveal">
+        <slot />
+      </div>
     </div>
-  </div>
+  </KlantGate>
 </BaseLayout>
 
 <MermaidInit />

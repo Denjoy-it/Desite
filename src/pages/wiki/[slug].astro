@@ -3,6 +3,7 @@ import { getCollection, render } from "astro:content";
 import WikiLayout from "../../layouts/WikiLayout.astro";
 import { slugifyCategory } from "../../lib/slug";
 import ExportPdfButton from "../../components/ExportPdfButton.astro";
+import KlantGate from "../../components/KlantGate.astro";
 
 export async function getStaticPaths() {
   const pages = await getCollection("wiki", ({ data }) => !data.draft);
@@ -17,6 +18,7 @@ const { Content, headings } = await render(entry);
 
 const allClients = await getCollection("clients");
 const linkedClients = allClients.filter((c) => entry.data.clients.includes(c.id));
+const isClientLinked = linkedClients.length > 0;
 const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garandeer trailing slash
 ---
 
@@ -25,15 +27,16 @@ const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garand
   description={entry.data.description}
   activeId={entry.id}
   pageHeadings={headings}
+  noIndex={isClientLinked}
 >
-  <div class="wiki-crumb">
-    <a href={`${base}wiki/`}>Wiki</a> <span>/</span>
-    <a href={`${base}wiki/categorie/${slugifyCategory(entry.data.category)}/`}>{entry.data.category}</a>
-  </div>
-  <h1 class="wiki-title">{entry.data.title}</h1>
-  {entry.data.description && <p class="lede">{entry.data.description}</p>}
-  {
-    linkedClients.length > 0 && (
+  <KlantGate active={isClientLinked} extraHashes={linkedClients.map((c) => c.data.gatePassphraseHash)}>
+    <div class="wiki-crumb">
+      <a href={`${base}wiki/`}>Wiki</a> <span>/</span>
+      <a href={`${base}wiki/categorie/${slugifyCategory(entry.data.category)}/`}>{entry.data.category}</a>
+    </div>
+    <h1 class="wiki-title">{entry.data.title}</h1>
+    {entry.data.description && <p class="lede">{entry.data.description}</p>}
+    {isClientLinked && (
       <div class="client-tags">
         <span class="client-tags-label">Klant:</span>
         {linkedClients.map((c) => (
@@ -42,10 +45,10 @@ const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garand
           </a>
         ))}
       </div>
-    )
-  }
-  <ExportPdfButton />
-  <article>
-    <Content />
-  </article>
+    )}
+    <ExportPdfButton />
+    <article>
+      <Content />
+    </article>
+  </KlantGate>
 </WikiLayout>

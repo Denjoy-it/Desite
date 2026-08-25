@@ -30,6 +30,7 @@ const base = import.meta.env.BASE_URL.replace(new RegExp("/?$"), "/"); // garand
   description={entry.data.description}
   activeId={entry.id}
   pageHeadings={headings}
+  gateHashes={[entry.data.gatePassphraseHash]}
 >
   <div class="wiki-crumb">
     <a href={`${base}klanten/`}>Klanten</a> <span>/</span> <span>{entry.data.title}</span>

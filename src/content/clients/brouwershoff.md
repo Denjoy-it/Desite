@@ -11,6 +11,7 @@ facts:
     mono: true
   - label: "Sites"
     value: "44"
+gatePassphraseHash: "078b7cc22f06f7c2e77290408827e9ff36b14799bc59165688ab9c7dd744ce41" # "zeilboot-sp-26"
 ---
 
 ## Omgeving

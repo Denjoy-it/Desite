@@ -13,6 +13,7 @@ facts:
     mono: true
   - label: "Contactpersoon"
     value: "Dimitri (keurt wijzigingen goed)"
+gatePassphraseHash: "3ff7aef09223fec0a04b07b549e00842c99ee6a8d6791640dae7509dbb145f15" # "boomkikker-nh-26"
 ---
 
 ## Omgeving

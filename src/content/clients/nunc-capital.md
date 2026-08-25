@@ -13,6 +13,7 @@ facts:
     mono: true
   - label: "Contactpersoon"
     value: "Steven Rooijers (NUNC Capital)"
+gatePassphraseHash: "7d1d597505e2df83e9515b7247dbe6e02e49768e54770fba0b44dc25539a560a" # "cobalt-staal-26"
 ---
 
 ## Omgeving

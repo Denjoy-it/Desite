@@ -11,6 +11,9 @@ import rehypeNumberSections from "./src/lib/rehype-number-sections.mjs";
 export default defineConfig({
   site: "https://denjoy-it.github.io",
   base: "/Desite",
+  server: {
+    port: process.env.PORT ? Number(process.env.PORT) : 4321,
+  },
   integrations: [mdx(), pagefind()],
   markdown: {
     syntaxHighlight: {

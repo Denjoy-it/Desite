@@ -1,0 +1,5 @@
+# Shell/startup-scripts moeten altijd LF-regeleindes houden, ook als ze
+# vanaf een Windows-machine gecommit worden - anders werkt het shebang-pad
+# (#!/bin/bash) niet meer op macOS/Linux.
+*.command text eol=lf
+*.sh text eol=lf

@@ -1,20 +1,37 @@
 #!/usr/bin/env node
-// Lokale tool: zet een Word-document (.docx) om naar een concept-wiki-artikel
-// (Markdown met frontmatter) in src/content/wiki/, plus een review-wachtrij
-// om die concepten te beoordelen en te publiceren. Draait alleen op je eigen
-// machine (npm run import-docx), bindt expliciet aan 127.0.0.1 - geen login,
-// dus niet aan het netwerk blootstellen. Geen deploy-impact.
+// Lokale beheertool voor Desite: één plek om (1) een Word-document (.docx) of
+// een los .md-bestand om te zetten naar een concept-wiki-artikel, (2) die
+// concepten te beoordelen en te publiceren, en (3) klanten aan te maken en
+// te bewerken. Draait alleen op je eigen machine (npm run beheer), bindt
+// expliciet aan 127.0.0.1 - geen login, dus niet aan het netwerk
+// blootstellen. Geen deploy-impact: dit script is geen onderdeel van de
+// Astro-build, alleen een los Node-hulpmiddel.
 //
-// Gebruik: npm run import-docx
-// - "/" - upload een .docx (titel/beschrijving/categorie/klant(en) invullen,
-//   dan klikken/slepen); komt als concept (draft: true) in src/content/wiki/.
+// Bewust geen login: dit draait alleen lokaal op jouw eigen machine, en wie
+// dit script kan starten had toch al volledige bestandstoegang tot de repo.
+// Zie scripts/start-windows.bat / scripts/start-mac.command om dit als vaste
+// snelkoppeling (evt. bij het opstarten van je machine) te starten.
+//
+// Gebruik: npm run beheer
+// - "/" - upload een .docx of .md (titel/beschrijving/categorie/klant(en)
+//   invullen, dan klikken/slepen); komt als concept (draft: true) in
+//   src/content/wiki/. Een .md-bestand wordt niet geconverteerd (het is al
+//   Markdown) - een eventuele eigen frontmatter erin wordt genegeerd, die
+//   komt uit het formulier. De klant-lijst in dit formulier wordt bij elke
+//   paginalaad vers van schijf gelezen, dus een klant die je net hebt
+//   aangemaakt staat er meteen bij.
 // - "/drafts" - overzicht van alle concepten in de wachtrij.
 // - "/drafts/edit?slug=..." - ruwe Markdown-editor per concept: opslaan
 //   (blijft concept), publiceren (zet draft: false) of verwijderen.
+// - "/klanten" - overzicht van alle klanten, met een mini-formulier om een
+//   nieuwe klant te starten.
+// - "/klanten/edit?slug=..." - ruwe Markdown-editor per klant: opslaan of
+//   verwijderen.
 
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import mammoth from "mammoth";
 import TurndownService from "turndown";
@@ -108,9 +125,11 @@ function readFrontmatterFiles(dir) {
     });
 }
 
+// Leest de klant-lijst altijd vers van schijf (geen caching) - een klant die
+// net via /klanten is aangemaakt staat dus meteen in het upload-formulier.
 function getClients() {
   return readFrontmatterFiles(CLIENTS_DIR)
-    .map((c) => ({ id: c.id, title: c.data.title ?? c.id }))
+    .map((c) => ({ id: c.id, title: c.data.title ?? c.id, description: c.data.description ?? "" }))
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
@@ -120,8 +139,14 @@ function nextOrder(category) {
   return Math.max(...existing.map((e) => Number(e.data.order) || 0)) + 1;
 }
 
-function uniqueSlug(base) {
-  const existingIds = new Set(readFrontmatterFiles(WIKI_DIR).map((e) => e.id));
+function nextClientOrder() {
+  const existing = readFrontmatterFiles(CLIENTS_DIR);
+  if (existing.length === 0) return 1;
+  return Math.max(...existing.map((e) => Number(e.data.order) || 0)) + 1;
+}
+
+function uniqueSlug(base, dir) {
+  const existingIds = new Set(readFrontmatterFiles(dir).map((e) => e.id));
   if (!existingIds.has(base)) return base;
   let n = 2;
   while (existingIds.has(`${base}-${n}`)) n++;
@@ -148,11 +173,46 @@ function draftFilePath(slug) {
   return fs.existsSync(p) ? p : null;
 }
 
+function clientFilePath(slug) {
+  if (!/^[a-z0-9-]+$/.test(slug)) return null;
+  const p = path.join(CLIENTS_DIR, `${slug}.md`);
+  return fs.existsSync(p) ? p : null;
+}
+
+// Willekeurige, redelijk uitspreekbare passphrase voor het cosmetische
+// KlantGate-inlogscherm op de publieke GitHub Pages-build (zie
+// src/components/KlantGate.astro) - elke klant krijgt bij aanmaken een eigen
+// wachtwoord, zodat klant A niet ook klant B's artikelen kan ontgrendelen.
+const PASSPHRASE_WORDS = [
+  "beukennoot", "dennenappel", "haverkorrel", "iepenblad", "kastanje",
+  "lisdodde", "mosterdzaad", "narcis", "populier", "rietvink",
+  "sleedoorn", "tamme", "veenmos", "wilgentak", "zonnedauw",
+];
+function generatePassphrase() {
+  const w1 = PASSPHRASE_WORDS[crypto.randomInt(PASSPHRASE_WORDS.length)];
+  const w2 = PASSPHRASE_WORDS[crypto.randomInt(PASSPHRASE_WORDS.length)];
+  const n = crypto.randomInt(10, 100);
+  return `${w1}-${w2}-${n}`;
+}
+function sha256Hex(text) {
+  return crypto.createHash("sha256").update(text).digest("hex");
+}
+
 const turndownService = new TurndownService({
   headingStyle: "atx",
   codeBlockStyle: "fenced",
+  bulletListMarker: "-", // huisstijl gebruikt overal "-", niet turndown's default "*"
 });
 turndownService.use(gfm);
+
+// Kop waarvan de hele tekst vetgedrukt is (bv. "# **Doel**") is een vaste
+// mammoth/turndown-artefact van Word-koppen, geen huisstijl - het dubbele
+// gewicht (kop + vet) is altijd overbodig. Zet 'm om naar een gewone kop.
+function stripBoldOnlyHeadings(markdown) {
+  // [ \t]* (niet \s*) vóór $ - \s zou ook de \n van een volgende lege regel
+  // opeten en zo de blanco regel na de kop laten verdwijnen.
+  return markdown.replace(/^(#{1,6})[ \t]*\*\*(.+?)\*\*[ \t]*$/gm, "$1 $2");
+}
 
 // Mammoth-tabellen hebben twee eigenschappen die turndown-plugin-gfm niet
 // zelfstandig aankan:
@@ -187,8 +247,18 @@ function normalizeTableHtml(html) {
 async function convertDocxToMarkdown(buffer) {
   const { value: rawHtml, messages } = await mammoth.convertToHtml({ buffer });
   const html = normalizeTableHtml(rawHtml);
-  const markdown = turndownService.turndown(html);
+  const markdown = stripBoldOnlyHeadings(turndownService.turndown(html));
   return { markdown, warnings: messages.filter((m) => m.type === "warning") };
+}
+
+// Een geüpload .md-bestand is al Markdown - geen mammoth/turndown nodig. Een
+// eventuele eigen frontmatter van het bestand wordt genegeerd: de frontmatter
+// van het concept komt uit het formulier (titel/beschrijving/categorie/...),
+// niet uit het bestand zelf.
+function convertMarkdownUpload(buffer) {
+  const { content } = matter(buffer.toString("utf-8"));
+  const markdown = stripBoldOnlyHeadings(content.trim());
+  return { markdown, warnings: [] };
 }
 
 function escapeHtml(s) {
@@ -214,8 +284,13 @@ const SHARED_STYLE = `
   .chk { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 13px; margin: 0; }
   .chk input { width: auto; }
   .hint { color: #8b929e; font-size: 12px; }
+  .style-warning {
+    background: #fdf1e4; border: 1px solid #ee7214; padding: 10px 14px;
+    font-size: 13px; margin-bottom: 12px; line-height: 1.5;
+  }
+  .style-warning ul { margin: 6px 0 0; padding-left: 18px; }
 
-  /* Topnav: schakelen tussen uploaden en de concepten-wachtrij. */
+  /* Topnav: schakelen tussen uploaden, concepten en klanten. */
   .topnav { max-width: 640px; margin: 0 auto; padding: 18px 0 22px; display: flex; gap: 6px; }
   .topnav a {
     font-size: 13px; font-weight: 600; color: #586170; text-decoration: none;
@@ -227,7 +302,7 @@ const SHARED_STYLE = `
     border-radius: 999px; font-size: 11px; padding: 1px 7px;
   }
 
-  /* Conceptenlijst */
+  /* Conceptenlijst / klantenlijst */
   .draft-row {
     display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #e3e6eb;
   }
@@ -273,7 +348,7 @@ const SHARED_STYLE = `
   .cheatsheet ul li { margin: 4px 0; }
   .cheatsheet .example-link { font-size: 12px; }
 
-  /* "Nieuw concept starten" - klein formulier bovenaan de conceptenlijst. */
+  /* "Nieuw concept/klant starten" - klein formulier bovenaan de lijst. */
   .new-draft-box {
     border: 1px dashed #d3d8df; padding: 16px; margin-bottom: 22px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
   }
@@ -335,6 +410,7 @@ function pageShell(title, activeNav, bodyHtml) {
 <nav class="topnav">
   <a href="/"${activeNav === "upload" ? ' class="active"' : ""}>Uploaden</a>
   <a href="/drafts"${activeNav === "drafts" ? ' class="active"' : ""}>Concepten${draftCount ? `<span class="badge">${draftCount}</span>` : ""}</a>
+  <a href="/klanten"${activeNav === "klanten" ? ' class="active"' : ""}>Klanten</a>
 </nav>
 ${bodyHtml}
 </body>
@@ -353,12 +429,12 @@ function renderForm() {
             `<label class="chk"><input type="checkbox" name="clients" value="${escapeHtml(c.id)}"> ${escapeHtml(c.title)}</label>`,
         )
         .join("")
-    : `<p class="hint">Nog geen klanten in src/content/clients/.</p>`;
+    : `<p class="hint">Nog geen klanten - <a href="/klanten">maak er eerst een aan</a>.</p>`;
 
   const body = `
 <div class="wrap">
-  <h1>Word-document importeren</h1>
-  <p class="lede">Vul de metadata in, kies daarna een .docx (of sleep 'm op de knop) - de upload en conversie starten meteen op de achtergrond. Zet een concept dat als draft in src/content/wiki/ komt: bekijk 'm daarna op de <a href="/drafts">conceptenpagina</a> om na te lezen en te publiceren.</p>
+  <h1>Document importeren</h1>
+  <p class="lede">Vul de metadata in, kies daarna een .docx- of .md-bestand (of sleep 'm op de knop) - de upload en conversie starten meteen op de achtergrond. Zet een concept dat als draft in src/content/wiki/ komt: bekijk 'm daarna op de <a href="/drafts">conceptenpagina</a> om na te lezen en te publiceren.</p>
   <form id="f">
     <label for="title">Titel</label>
     <input type="text" id="title" required>
@@ -373,12 +449,12 @@ function renderForm() {
     <div class="chk-grid">${clientCheckboxes}</div>
 
     <div id="dropzone">
-      <input type="file" id="fileInput" accept=".docx">
+      <input type="file" id="fileInput" accept=".docx,.md,.markdown">
       <button type="button" class="btn" id="pickBtn">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"></path></svg>
-        Word-bestand uploaden (.docx)
+        Bestand uploaden (.docx of .md)
       </button>
-      <div class="filehint">Klik, of sleep een .docx op deze knop</div>
+      <div class="filehint">Klik, of sleep een .docx- of .md-bestand op deze knop</div>
     </div>
   </form>
 </div>
@@ -471,7 +547,7 @@ function renderForm() {
     if (file) uploadAndConvert(file);
   });
 </script>`;
-  return pageShell("Word importeren", "upload", body);
+  return pageShell("Document importeren", "upload", body);
 }
 
 function renderDraftsList() {
@@ -496,7 +572,7 @@ function renderDraftsList() {
 
   const body = `<div class="wrap">
   <h1>Concepten - wachtrij</h1>
-  <p class="lede">Wiki-pagina's die via een Word-upload zijn omgezet, of hier direct gestart, en nog op <code>draft: true</code> staan. Beoordeel de inhoud, ruim de opmaak op waar nodig, en publiceer of verwijder.</p>
+  <p class="lede">Wiki-pagina's die via een upload zijn omgezet, of hier direct gestart, en nog op <code>draft: true</code> staan. Beoordeel de inhoud, ruim de opmaak op waar nodig, en publiceer of verwijder.</p>
 
   <form id="newDraftForm" class="new-draft-box">
     <div class="field">
@@ -585,6 +661,7 @@ function renderDraftEditor(slug, content) {
   const body = `<div class="wrap">
   <h1>Concept beoordelen</h1>
   <p class="lede"><code>${escapeHtml(slug)}.md</code> &mdash; ruwe Markdown incl. frontmatter. Wijzig wat nodig is en publiceer zodra het klaar is.</p>
+  <div id="styleWarning" class="style-warning" hidden></div>
   <textarea id="editor">${escapeHtml(content)}</textarea>
   <div class="editor-actions">
     <button id="btnSave">Opslaan (blijft concept)</button>
@@ -594,6 +671,180 @@ function renderDraftEditor(slug, content) {
   </div>
   <div id="editorMsg"></div>
   ${renderCheatsheet()}
+</div>
+<script>
+  const slug = ${JSON.stringify(slug)};
+  const editor = document.getElementById("editor");
+  const msg = document.getElementById("editorMsg");
+  const styleWarning = document.getElementById("styleWarning");
+
+  function setMsg(state, text) {
+    msg.className = state;
+    msg.textContent = text;
+  }
+
+  // Lichte, deterministische check op vaste kenmerken van ruwe Word-conversie
+  // die de huisstijl nooit gebruikt - geen vervanging voor menselijke review,
+  // wel een vangnet tegen per ongeluk ongeformatteerd publiceren.
+  function checkHouseStyleIssues(content) {
+    const body = content.replace(/^---[\\s\\S]*?---/, ""); // frontmatter overslaan
+    const issues = [];
+    if (/^#{1,6}\\s*\\*\\*.+\\*\\*\\s*$/m.test(body)) {
+      issues.push("Er staat nog een kop die volledig vetgedrukt is (bv. \\"# **Titel**\\") - gebruik een gewone kop zonder vet.");
+    }
+    if (body.trim().length > 400 && !/^#{2,3}\\s/m.test(body)) {
+      issues.push("Geen enkele ## of ###-kop gevonden in een langere tekst - de pagina krijgt dan geen inhoudsopgave.");
+    }
+    if (/^\\*\\s{2,}\\S/m.test(body)) {
+      issues.push("Er staan nog bullets met \\"*\\" in plaats van \\"-\\" (Word-conversie-restant).");
+    }
+    return issues;
+  }
+
+  function renderStyleWarning() {
+    const issues = checkHouseStyleIssues(editor.value);
+    if (issues.length === 0) {
+      styleWarning.hidden = true;
+      return issues;
+    }
+    styleWarning.hidden = false;
+    styleWarning.innerHTML =
+      "<b>Lijkt nog niet opgemaakt volgens de huisstijl:</b><ul>" +
+      issues.map((i) => "<li>" + i + "</li>").join("") +
+      "</ul>";
+    return issues;
+  }
+
+  renderStyleWarning();
+  let debounceTimer;
+  editor.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(renderStyleWarning, 400);
+  });
+
+  async function post(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || "Onbekende fout");
+    return data;
+  }
+
+  document.getElementById("btnSave").addEventListener("click", async () => {
+    try {
+      await post("/drafts/save", { slug, content: editor.value });
+      setMsg("ok", "Opgeslagen (blijft concept).");
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+
+  document.getElementById("btnPublish").addEventListener("click", async () => {
+    const issues = renderStyleWarning();
+    if (issues.length > 0) {
+      const proceed = confirm(
+        "Deze pagina lijkt nog niet volledig opgemaakt volgens de huisstijl:\\n\\n- " +
+          issues.join("\\n- ") +
+          "\\n\\nToch publiceren zonder deze punten aan te passen?",
+      );
+      if (!proceed) return;
+    }
+    try {
+      await post("/drafts/save", { slug, content: editor.value });
+      await post("/drafts/publish", { slug });
+      window.location.href = "/drafts";
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+
+  document.getElementById("btnDelete").addEventListener("click", async () => {
+    if (!confirm("Dit concept definitief verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    try {
+      await post("/drafts/delete", { slug });
+      window.location.href = "/drafts";
+    } catch (err) {
+      setMsg("err", "Mislukt: " + err.message);
+    }
+  });
+</script>`;
+  return pageShell("Concept beoordelen", "drafts", body);
+}
+
+function renderClientsList() {
+  const clients = getClients();
+  const rows = clients.length
+    ? clients
+        .map(
+          (c) => `<div class="draft-row">
+    <div class="meta">
+      <div class="title">${escapeHtml(c.title)}</div>
+      <div class="sub">${escapeHtml(c.description)} &middot; <code>${escapeHtml(c.id)}.md</code></div>
+    </div>
+    <a class="editbtn" href="/klanten/edit?slug=${encodeURIComponent(c.id)}">Bewerken &rarr;</a>
+  </div>`,
+        )
+        .join("")
+    : `<p class="empty-state">Nog geen klanten. Maak er hierboven een aan.</p>`;
+
+  const body = `<div class="wrap">
+  <h1>Klanten</h1>
+  <p class="lede">Klantpagina's in <code>src/content/clients/</code>. Een nieuwe klant staat meteen beschikbaar in de klant-lijst bij het uploaden van een document.</p>
+
+  <form id="newClientForm" class="new-draft-box">
+    <div class="field">
+      <label for="newTitle">Nieuwe klant - naam</label>
+      <input type="text" id="newTitle" placeholder="Naam van de klant" required>
+    </div>
+    <div class="field">
+      <label for="newDescription">Korte omschrijving</label>
+      <input type="text" id="newDescription" placeholder="Een zin die samenvat wie/wat dit is">
+    </div>
+    <button type="submit">Klant aanmaken</button>
+  </form>
+
+  ${rows}
+</div>
+<script>
+  document.getElementById("newClientForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("newTitle").value.trim();
+    const description = document.getElementById("newDescription").value.trim();
+    if (!title) return;
+    const res = await fetch("/klanten/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      alert(
+        "Klant aangemaakt. Wachtwoord voor het publieke inlogscherm (GitHub Pages) van deze klant:\\n\\n" +
+          data.passphrase +
+          "\\n\\nNoteer dit ergens - het wordt niet nogmaals getoond (alleen de hash staat in het bestand)."
+      );
+      window.location.href = "/klanten/edit?slug=" + encodeURIComponent(data.slug);
+    } else {
+      alert("Mislukt: " + (data.error || "Onbekende fout"));
+    }
+  });
+</script>`;
+  return pageShell("Klanten", "klanten", body);
+}
+
+function renderClientEditor(slug, content) {
+  const body = `<div class="wrap">
+  <h1>Klant bewerken</h1>
+  <p class="lede"><code>${escapeHtml(slug)}.md</code> &mdash; ruwe Markdown incl. frontmatter (<code>facts</code>, <code>gatePassphraseHash</code>, ...).</p>
+  <textarea id="editor">${escapeHtml(content)}</textarea>
+  <div class="editor-actions">
+    <button id="btnSave">Opslaan</button>
+    <button id="btnDelete" type="button">Verwijderen</button>
+  </div>
+  <div id="editorMsg"></div>
 </div>
 <script>
   const slug = ${JSON.stringify(slug)};
@@ -618,34 +869,24 @@ function renderDraftEditor(slug, content) {
 
   document.getElementById("btnSave").addEventListener("click", async () => {
     try {
-      await post("/drafts/save", { slug, content: editor.value });
-      setMsg("ok", "Opgeslagen (blijft concept).");
-    } catch (err) {
-      setMsg("err", "Mislukt: " + err.message);
-    }
-  });
-
-  document.getElementById("btnPublish").addEventListener("click", async () => {
-    try {
-      await post("/drafts/save", { slug, content: editor.value });
-      await post("/drafts/publish", { slug });
-      window.location.href = "/drafts";
+      await post("/klanten/save", { slug, content: editor.value });
+      setMsg("ok", "Opgeslagen.");
     } catch (err) {
       setMsg("err", "Mislukt: " + err.message);
     }
   });
 
   document.getElementById("btnDelete").addEventListener("click", async () => {
-    if (!confirm("Dit concept definitief verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    if (!confirm("Deze klant en de pagina definitief verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
     try {
-      await post("/drafts/delete", { slug });
-      window.location.href = "/drafts";
+      await post("/klanten/delete", { slug });
+      window.location.href = "/klanten";
     } catch (err) {
       setMsg("err", "Mislukt: " + err.message);
     }
   });
 </script>`;
-  return pageShell("Concept beoordelen", "drafts", body);
+  return pageShell("Klant bewerken", "klanten", body);
 }
 
 async function handleImport(req, res) {
@@ -671,7 +912,7 @@ async function handleImport(req, res) {
     return;
   }
 
-  const { title, description, category, clients = [], fileBase64 } = payload;
+  const { title, description, category, clients = [], fileBase64, filename = "" } = payload;
   if (!title?.trim() || !description?.trim() || !category || !fileBase64) {
     res.writeHead(400, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: "Titel, beschrijving, categorie en bestand zijn verplicht." }));
@@ -682,12 +923,19 @@ async function handleImport(req, res) {
     res.end(JSON.stringify({ ok: false, error: "Onbekende categorie." }));
     return;
   }
+  const ext = path.extname(filename).toLowerCase();
+  if (![".docx", ".md", ".markdown"].includes(ext)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "Alleen .docx- of .md-bestanden worden ondersteund." }));
+    return;
+  }
 
   try {
     const buffer = Buffer.from(fileBase64, "base64");
-    const { markdown, warnings } = await convertDocxToMarkdown(buffer);
+    const { markdown, warnings } =
+      ext === ".docx" ? await convertDocxToMarkdown(buffer) : convertMarkdownUpload(buffer);
 
-    const slug = uniqueSlug(slugify(title));
+    const slug = uniqueSlug(slugify(title), WIKI_DIR);
     const order = nextOrder(category);
     const frontmatter = {
       title: title.trim(),
@@ -753,7 +1001,7 @@ async function handleDraftNew(req, res) {
     return sendJson(res, 400, { ok: false, error: "Onbekende categorie." });
   }
 
-  const slug = uniqueSlug(slugify(title));
+  const slug = uniqueSlug(slugify(title), WIKI_DIR);
   const order = nextOrder(category);
   const frontmatter = {
     title: title.trim(),
@@ -819,6 +1067,67 @@ async function handleDraftDelete(req, res) {
   sendJson(res, 200, { ok: true });
 }
 
+async function handleClientNew(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const { title, description = "" } = payload;
+  if (!title?.trim()) return sendJson(res, 400, { ok: false, error: "Naam is verplicht." });
+
+  const slug = uniqueSlug(slugify(title), CLIENTS_DIR);
+  const order = nextClientOrder();
+  const passphrase = generatePassphrase();
+  const frontmatter = {
+    title: title.trim(),
+    description: description.trim(),
+    facts: [],
+    order,
+    gatePassphraseHash: sha256Hex(passphrase),
+  };
+  const body = `\n## Omgeving\n\nTODO: beschrijf de omgeving van deze klant.\n`;
+  // Comment met de plaintext-passphrase direct achter de hash plakken (net als
+  // bij de handmatig aangemaakte klanten), niet ergens los in de body - anders
+  // is hij bij het lezen van het bestand niet te vinden.
+  const file = matter
+    .stringify(body, frontmatter)
+    .replace(
+      /^(gatePassphraseHash: .+)$/m,
+      `$1 # "${passphrase}"`,
+    );
+  if (!fs.existsSync(CLIENTS_DIR)) fs.mkdirSync(CLIENTS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(CLIENTS_DIR, `${slug}.md`), file, "utf-8");
+  sendJson(res, 200, { ok: true, slug, passphrase });
+}
+
+async function handleClientSave(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const { slug, content } = payload;
+  const filePath = clientFilePath(slug);
+  if (!filePath) return sendJson(res, 404, { ok: false, error: "Klant niet gevonden." });
+  if (typeof content !== "string" || !content.trim()) {
+    return sendJson(res, 400, { ok: false, error: "Lege inhoud." });
+  }
+  try {
+    const parsed = matter(content);
+    if (!parsed.data?.title) {
+      return sendJson(res, 400, { ok: false, error: "title is verplicht in de frontmatter." });
+    }
+  } catch (err) {
+    return sendJson(res, 400, { ok: false, error: "Frontmatter kan niet worden gelezen: " + err.message });
+  }
+  fs.writeFileSync(filePath, content, "utf-8");
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleClientDelete(req, res) {
+  const payload = await readJsonBody(req, res);
+  if (!payload) return;
+  const filePath = clientFilePath(payload.slug);
+  if (!filePath) return sendJson(res, 404, { ok: false, error: "Klant niet gevonden." });
+  fs.unlinkSync(filePath);
+  sendJson(res, 200, { ok: true });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
 
@@ -853,6 +1162,27 @@ const server = http.createServer((req, res) => {
   if (req.method === "POST" && url.pathname === "/drafts/publish") return handleDraftPublish(req, res);
   if (req.method === "POST" && url.pathname === "/drafts/delete") return handleDraftDelete(req, res);
 
+  if (req.method === "GET" && url.pathname === "/klanten") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(renderClientsList());
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/klanten/edit") {
+    const slug = url.searchParams.get("slug") ?? "";
+    const filePath = clientFilePath(slug);
+    if (!filePath) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Klant niet gevonden.");
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(renderClientEditor(slug, fs.readFileSync(filePath, "utf-8")));
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/klanten/new") return handleClientNew(req, res);
+  if (req.method === "POST" && url.pathname === "/klanten/save") return handleClientSave(req, res);
+  if (req.method === "POST" && url.pathname === "/klanten/delete") return handleClientDelete(req, res);
+
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Not found");
 });
@@ -861,5 +1191,5 @@ const server = http.createServer((req, res) => {
 // bestanden in de repo schrijven/verwijderen, dus niet aan het netwerk
 // blootstellen (Node bindt anders standaard aan alle interfaces).
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`\nWord-import klaar op http://localhost:${PORT}\nOpen dit adres in je browser. Ctrl+C om te stoppen.\n`);
+  console.log(`\nDesite-beheer klaar op http://localhost:${PORT}\nOpen dit adres in je browser. Ctrl+C om te stoppen.\n`);
 });

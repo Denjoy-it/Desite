@@ -2,6 +2,7 @@
 import { getCollection, render } from "astro:content";
 import ArticleLayout from "../../layouts/ArticleLayout.astro";
 import { formatDate } from "../../lib/format";
+import KlantGate from "../../components/KlantGate.astro";
 
 export async function getStaticPaths() {
   const posts = await getCollection("blog", ({ data }) => !data.draft);
@@ -13,6 +14,9 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content, headings } = await render(post);
+const allClients = await getCollection("clients");
+const linkedClients = allClients.filter((c) => post.data.clients.includes(c.id));
+const isClientLinked = linkedClients.length > 0;
 ---
 
 <ArticleLayout
@@ -25,5 +29,7 @@ const { Content, headings } = await render(post);
   ]}
   headings={headings}
 >
-  <Content />
+  <KlantGate active={isClientLinked} extraHashes={linkedClients.map((c) => c.data.gatePassphraseHash)}>
+    <Content />
+  </KlantGate>
 </ArticleLayout>

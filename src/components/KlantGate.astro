@@ -1,0 +1,187 @@
+---
+// Cosmetisch inlogscherm voor /klanten/* op de publieke GitHub Pages-build.
+// LET OP: dit is GEEN echte beveiliging. GitHub Pages is statische hosting -
+// de volledige klantpagina staat gewoon in de HTML-bron, ook al is hij
+// verborgen achter dit scherm (view-source of een simpele localStorage-flag
+// omzeilt dit meteen). Het is puur bedoeld om te voorkomen dat iemand die
+// toevallig de link opent of over je scherm meekijkt direct klantgegevens
+// ziet - niet om ze echt af te schermen.
+//
+// Voor échte toegangsbeveiliging (per-klant, per-gebruiker) is - zodra een
+// Azure-abonnement beschikbaar is - een deploy met Entra ID-authenticatie
+// ("Easy Auth") op Azure Static Web Apps de logische stap, die /klanten/*
+// serverside afschermt. Tot die tijd is dit cosmetische scherm de enige
+// toegangscontrole op de publieke build.
+//
+// Er is één QUBE-brede masterpassphrase (ontgrendelt alles) en daarnaast
+// heeft elke klant zijn eigen passphrase (in gatePassphraseHash op de klant
+// in src/content/clients/*.md) - zo kan klant A niet ook klant B's
+// artikelen zien. Een klant-gekoppeld wiki-/blogartikel ontgrendelt met de
+// passphrase van élk van de gekoppelde klanten (of de masterpassphrase).
+//
+// Wachtwoord wijzigen: herbereken de hash (bv. via de browserconsole:
+// await crypto.subtle.digest("SHA-256", new TextEncoder().encode("nieuw-wachtwoord"))
+// -> hex) en vervang hem hieronder (master) of in het klant-bestand
+// (gatePassphraseHash). Deze wachtwoorden staan gewoon leesbaar in de
+// site-broncode - deel ze alleen als "even geen toevallige voorbijganger",
+// niet als geheim.
+const MASTER_PASSPHRASE_HASH = "d7e1fb9a86074bf3eb1fa817ca22028c71334357c8a822d963e1c09c238212c6"; // "qube-klanten-2026"
+
+interface Props {
+  /** Zet op false om dit component als no-op door te laten (geen overlay/lock) - handig om de
+   * gate conditioneel toe te passen zonder de inhoud tweemaal in de pagina te hoeven schrijven. */
+  active?: boolean;
+  /** SHA-256-hash(es) van klant-specifieke passphrases die deze pagina ook mogen ontgrendelen,
+   * naast de masterpassphrase - bv. de gatePassphraseHash van de/de gekoppelde klant(en). */
+  extraHashes?: (string | undefined)[];
+}
+
+const { active = true, extraHashes = [] } = Astro.props;
+const candidateHashes = [...new Set([MASTER_PASSPHRASE_HASH, ...extraHashes.filter((h): h is string => !!h)])];
+---
+
+{!active && <slot />}
+{active && (
+  <Fragment>
+    <div id="klanten-gate-overlay" class="klanten-gate-overlay">
+      <div class="klanten-gate-box">
+        <p class="klanten-gate-warn">
+          <strong>Let op:</strong> dit scherm is <strong>geen echte beveiliging</strong>.
+          Het is een simpel wachtwoordje om te voorkomen dat toevallige bezoekers
+          klantgegevens zien - de inhoud staat gewoon in de paginabron. Deel geen
+          écht vertrouwelijke of persoonsgegevens via deze site zolang er geen
+          echte serverside authenticatie is.
+        </p>
+        <label for="klanten-gate-input">Wachtwoord</label>
+        <input id="klanten-gate-input" type="password" autocomplete="off" />
+        <button id="klanten-gate-submit" type="button">Ontgrendelen</button>
+        <p id="klanten-gate-error" class="klanten-gate-error" hidden>Onjuist wachtwoord.</p>
+      </div>
+    </div>
+    <div class="klanten-gate-content">
+      <slot />
+    </div>
+    <script is:inline>
+      document.documentElement.classList.add("klanten-locked");
+    </script>
+    <script is:inline define:vars={{ candidateHashes }}>
+      (function () {
+        const STORAGE_KEY = "desite-klanten-unlocked-hashes";
+
+        function getUnlocked() {
+          try {
+            const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+            return Array.isArray(raw) ? raw : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function rememberUnlocked(hash) {
+          const set = new Set(getUnlocked());
+          set.add(hash);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+        }
+
+        async function sha256Hex(text) {
+          const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+          return Array.from(new Uint8Array(buf))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+        }
+
+        function unlock() {
+          document.documentElement.classList.remove("klanten-locked");
+        }
+
+        const unlocked = getUnlocked();
+        if (candidateHashes.some((h) => unlocked.includes(h))) {
+          unlock();
+          return;
+        }
+
+        const input = document.getElementById("klanten-gate-input");
+        const button = document.getElementById("klanten-gate-submit");
+        const error = document.getElementById("klanten-gate-error");
+
+        async function tryUnlock() {
+          const hash = await sha256Hex(input.value);
+          if (candidateHashes.includes(hash)) {
+            rememberUnlocked(hash);
+            error.hidden = true;
+            unlock();
+          } else {
+            error.hidden = false;
+          }
+        }
+
+        button?.addEventListener("click", tryUnlock);
+        input?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") tryUnlock();
+        });
+      })();
+    </script>
+  </Fragment>
+)}
+
+<style>
+  .klanten-gate-overlay {
+    display: none;
+  }
+  html.klanten-locked .klanten-gate-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    background: rgba(22, 26, 32, 0.92);
+    padding: 20px;
+  }
+  html.klanten-locked .klanten-gate-content {
+    display: none;
+  }
+  .klanten-gate-box {
+    background: #fff;
+    max-width: 420px;
+    width: 100%;
+    padding: 28px;
+    border: 1px solid #e3e6eb;
+  }
+  .klanten-gate-warn {
+    background: #fdf1e4;
+    border: 1px solid #ee7214;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin: 0 0 18px;
+  }
+  .klanten-gate-box label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .klanten-gate-box input {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #d3d8df;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .klanten-gate-box button {
+    margin-top: 14px;
+    background: #ee7214;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .klanten-gate-error {
+    color: #e11d48;
+    font-size: 12.5px;
+    margin: 10px 0 0;
+  }
+</style>

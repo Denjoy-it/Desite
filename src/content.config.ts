@@ -64,6 +64,12 @@ const clients = defineCollection({
     description: z.string(),
     facts: z.array(factSchema).default([]),
     order: z.number().default(0),
+    // Wachtwoord (als SHA-256-hash) voor het cosmetische inlogscherm op de
+    // publieke GitHub Pages-build (zie src/components/KlantGate.astro). Elke
+    // klant heeft zijn eigen wachtwoord, zodat klant A niet automatisch ook
+    // klant B's artikelen kan zien. Er is daarnaast één QUBE-brede
+    // masterpassphrase die alles ontgrendelt (zie KlantGate.astro).
+    gatePassphraseHash: z.string().optional(),
   }),
 });
 
