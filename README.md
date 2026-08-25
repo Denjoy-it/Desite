@@ -222,6 +222,10 @@ automatisch actief op elke `/klanten/*` pagina via `ClientLayout.astro`):
   `localStorage`-vlag omzeilt dit scherm meteen. Er staat daarom een
   permanente disclaimer op het scherm zelf, en de pagina's krijgen
   `noindex` (blijven uit Google én uit de Pagefind-zoekindex).
+- **Staat uit tijdens `npm run dev`**: lokaal ben je de enige kijker, dus
+  geen zin om daar ook nog een wachtwoord te typen. Op een echte build
+  (`npm run build && npm run preview`, of de GitHub Pages-deploy) staat hij
+  gewoon aan - test 'm zo vóór je pusht.
 
 Gebruik dit scherm dus alleen als drempel tegen toevallige bezoekers, niet
 als bescherming voor echt gevoelige gegevens - zolang er geen serverside

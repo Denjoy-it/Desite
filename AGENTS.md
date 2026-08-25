@@ -151,6 +151,13 @@ klant-bestand.
 Klantpagina's krijgen ook `noindex` (uit Google én uit de
 Pagefind-zoekindex).
 
+De gate staat zichzelf uit tijdens `npm run dev` (`!import.meta.env.DEV`):
+lokaal test je alleen zelf, er is niemand om tegen te beschermen, dus geen
+zin om daar ook een wachtwoord in te typen. Op een echte build (`npm run
+preview` of de GitHub Pages-deploy, waar `import.meta.env.DEV` false is)
+staat hij gewoon aan - zo kun je 'm vóór het pushen nog testen via
+`npm run build && npm run preview`.
+
 `KlantGate` accepteert ook een `active`-prop (default `true`) zodat hij
 overal herbruikbaar is zonder de inhoud dubbel te hoeven schrijven. Elke
 wiki- of blogpagina met een niet-lege `clients`-lijst in de frontmatter gaat

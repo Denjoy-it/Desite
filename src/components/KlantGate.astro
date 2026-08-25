@@ -36,7 +36,11 @@ interface Props {
   extraHashes?: (string | undefined)[];
 }
 
-const { active = true, extraHashes = [] } = Astro.props;
+const { active: activeProp = true, extraHashes = [] } = Astro.props;
+// Tijdens "npm run dev" (lokaal, alleen jijzelf) is er niemand om tegen te
+// beschermen - de gate is alleen zinvol op een echte build (npm run preview
+// of de publieke GitHub Pages-deploy), dus daar staat hij altijd nog aan.
+const active = activeProp && !import.meta.env.DEV;
 const candidateHashes = [...new Set([MASTER_PASSPHRASE_HASH, ...extraHashes.filter((h): h is string => !!h)])];
 ---
 
